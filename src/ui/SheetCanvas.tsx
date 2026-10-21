@@ -1,3 +1,4 @@
+import { T, Tn } from '../i18n';
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import type { SheetLayout, Panel, Layout, Rule } from '../core/types';
 import type { FlatPattern } from '../core/unfold';
@@ -199,7 +200,7 @@ export function SheetCanvas(p: Props) {
   return (
     <svg ref={svgRef} viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} preserveAspectRatio="xMidYMid meet"
       onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onWheel={onWheel} onDoubleClick={() => setVb(full)} onContextMenu={e => { if (!p.thumb) e.preventDefault(); }}
-      style={{ userSelect: 'none', touchAction: 'none' }} role={p.thumb ? 'img' : 'application'} aria-label={`Lámina ${p.sheetIdx + 1}, ${W}×${H} pulgadas, ${sheet.placements.length} piezas`}>
+      style={{ userSelect: 'none', touchAction: 'none' }} role={p.thumb ? 'img' : 'application'} aria-label={T`Lámina ${p.sheetIdx + 1}, ${W}×${H} pulgadas, ${sheet.placements.length} piezas`}>
       <defs>
         <pattern id={`trial${p.thumb ? 't' : ''}`} width={p.thumb ? 4 : 2.4} height={p.thumb ? 4 : 2.4} patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
           <line x1="0" y1="0" x2="0" y2={p.thumb ? 4 : 2.4} stroke="var(--bad)" strokeWidth={p.thumb ? 1.6 : 0.5} opacity={0.5} />
@@ -271,7 +272,7 @@ export function SheetCanvas(p: Props) {
               <g pointerEvents="none" fontFamily="var(--f-display)" textAnchor="middle">
                 <text x={pl.x + pl.w / 2} y={y + pl.h / 2 - lfs * 0.25} fontSize={lfs} fontWeight={700} fill="var(--part-ink)" dominantBaseline="middle">{label}</text>
                 {pan && <text x={pl.x + pl.w / 2} y={y + pl.h / 2 + lfs * 0.62} fontSize={lfs * 0.5} fontWeight={700} letterSpacing={lfs * 0.06} fill={orientationOf(pan, settings) === 'H' ? 'var(--sel)' : 'var(--accent)'} dominantBaseline="middle">{orientationOf(pan, settings) === 'H' ? 'HORIZONTAL' : 'VERTICAL'}</text>}
-                {lfs > 0.9 && <text x={pl.x + pl.w / 2} y={y + pl.h / 2 + lfs * 1.3} fontSize={lfs * 0.62} fill="var(--part-ink-2)" fontFamily="var(--f-mono)" dominantBaseline="middle">{pl.w.toFixed(2)}×{pl.h.toFixed(2)}{pl.rot ? ` · ${pl.rot}°` : ''}{cons.get(pl.uid)?.flip ? ' · espejo' : ''}{cons.get(pl.uid)?.fixedRot != null ? ' · giro fijo' : ''}</text>}
+                {lfs > 0.9 && <text x={pl.x + pl.w / 2} y={y + pl.h / 2 + lfs * 1.3} fontSize={lfs * 0.62} fill="var(--part-ink-2)" fontFamily="var(--f-mono)" dominantBaseline="middle">{pl.w.toFixed(2)}×{pl.h.toFixed(2)}{pl.rot ? ` · ${pl.rot}°` : ''}{cons.get(pl.uid)?.flip ? T(' · espejo') : ''}{cons.get(pl.uid)?.fixedRot != null ? T(' · giro fijo') : ''}</text>}
                 {pan && (() => {
                   const efs = Math.min(lfs * 0.62, pl.w / 8, pl.h / 5);
                   if (efs < 0.45 || Math.min(pl.w, pl.h) < 15) return null;
@@ -284,7 +285,7 @@ export function SheetCanvas(p: Props) {
                     return <text key={sd} x={tx} y={ty} fontSize={efs} textAnchor={an} fontFamily="var(--f-mono)" fontWeight={700} fill="var(--accent)">{pan[`edge${sd}` as 'edgeT']}</text>;
                   });
                 })()}
-                {pl.trial && <text x={pl.x + pl.w / 2} y={y + pl.h / 2 - lfs * 1.25} fontSize={lfs * 0.55} fontWeight={800} letterSpacing={lfs * 0.08} fill="var(--bad)" dominantBaseline="middle">PRUEBA · BORRAR</text>}
+                {pl.trial && <text x={pl.x + pl.w / 2} y={y + pl.h / 2 - lfs * 1.25} fontSize={lfs * 0.55} fontWeight={800} letterSpacing={lfs * 0.08} fill="var(--bad)" dominantBaseline="middle">{T("PRUEBA · BORRAR")}</text>}
                 {pl.locked && !pl.trial && <text x={pl.x + lfs * 0.5} y={y + lfs * 0.9} fontSize={lfs * 0.8} textAnchor="start" fill="var(--part-ink-2)">🔒</text>}
               </g>
             )}

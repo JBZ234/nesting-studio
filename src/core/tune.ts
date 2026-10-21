@@ -1,3 +1,4 @@
+import { T, Tn } from '../i18n';
 // Try other values of the optimizer sliders and report if one gives a clearly better result.
 
 import type { Layout, NestSettings } from './types';
@@ -18,9 +19,9 @@ export function isBetter(a: TuneSummary, b: TuneSummary) {
 }
 
 const LABEL: Partial<Record<keyof NestSettings, string>> = {
-  repeatSheets: 'Repetir láminas iguales', gridWeight: 'Láminas cuadriculadas', repeatWeight: 'Prioridad de repetir', repeatMinUtil: 'Aprovechamiento mínimo para repetir', rowAlign: 'Filas del mismo alto',
+  repeatSheets: T('Repetir láminas iguales'), gridWeight: T('Láminas cuadriculadas'), repeatWeight: T('Prioridad de repetir'), repeatMinUtil: T('Aprovechamiento mínimo para repetir'), rowAlign: T('Filas del mismo alto'),
 };
-const show = (k: keyof NestSettings, v: any) => k === 'repeatSheets' ? (v ? 'sí' : 'no') : k === 'repeatMinUtil' ? `${v}%` : (k === 'rowAlign' || k === 'gridWeight') && !v ? 'no' : String(v);
+const show = (k: keyof NestSettings, v: any) => k === 'repeatSheets' ? (v ? T('sí') : 'no') : k === 'repeatMinUtil' ? `${v}%` : (k === 'rowAlign' || k === 'gridWeight') && !v ? 'no' : String(v);
 
 export function tuneSettings(input: NestInput, base: TuneSummary, onStep?: (i: number, n: number) => void): TuneResult | null {
   const s = input.settings;

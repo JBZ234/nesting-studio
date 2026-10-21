@@ -1,3 +1,4 @@
+import { T, Tn } from '../i18n';
 // Rule-aware rectangular nesting.
 // MaxRects free-space bookkeeping + rule-aware candidate positions,
 // sheet-by-sheet greedy filling, and a time-boxed multi-start / local search
@@ -539,10 +540,10 @@ function solve(groups: Map<string, Item[]>, heur: Heur, input: NestInput, seeds:
       if (!chosen) {
         const it = remaining.shift()!;
         const noStock = !avail.length && defs.length > 0;
-        const reason = !defs.length ? 'No hay tamaños de lámina seleccionados para este material'
-          : noStock ? 'Se acabó la cantidad disponible de láminas'
-          : it.c.sheetIds ? 'No cabe en las láminas permitidas por sus reglas'
-          : 'No cabe en ninguna lámina con las reglas duras actuales';
+        const reason = !defs.length ? T('No hay tamaños de lámina seleccionados para este material')
+          : noStock ? T('Se acabó la cantidad disponible de láminas')
+          : it.c.sheetIds ? T('No cabe en las láminas permitidas por sus reglas')
+          : T('No cabe en ninguna lámina con las reglas duras actuales');
         unplaced.push({ iid: it.iid, uid: it.uid, reason, kind: noStock || !defs.length ? 'stock' : 'fit' });
         continue;
       }
@@ -1152,7 +1153,7 @@ function explainUnplaced(unplaced: Layout['unplaced'], input: NestInput) {
     const c = constraintsFor(p, input.rules, s);
     let reason = u.reason;
     if (Math.min(p.blankW, p.blankH) > Math.min(big.w, big.h) - s.margins.top - s.margins.bottom || Math.max(p.blankW, p.blankH) > big.w - s.margins.left - s.margins.right) {
-      reason = `El desarrollo (${p.blankW.toFixed(2)} × ${p.blankH.toFixed(2)}) no cabe en la lámina más grande seleccionada`;
+      reason = T`El desarrollo (${p.blankW.toFixed(2)} × ${p.blankH.toFixed(2)}) no cabe en la lámina más grande seleccionada`;
     } else if (!tryPlace(empty, p, c, s, u.iid, () => undefined)) {
       const blockers: string[] = [];
       for (const r of input.rules.filter(r => c.rules.includes(r.id))) {
@@ -1160,8 +1161,8 @@ function explainUnplaced(unplaced: Layout['unplaced'], input: NestInput) {
         if (tryPlace(empty, p, c2, s, u.iid, () => undefined)) blockers.push(`«${r.name}»`);
       }
       reason = blockers.length
-        ? `Imposible con ${blockers.join(' + ')}: ni en una lámina vacía de ${big.h} × ${big.w} se puede cumplir`
-        : 'Las reglas combinadas no dejan ninguna posición válida, ni en una lámina vacía';
+        ? T`Imposible con ${blockers.join(' + ')}: ni en una lámina vacía de ${big.h} × ${big.w} se puede cumplir`
+        : T('Las reglas combinadas no dejan ninguna posición válida, ni en una lámina vacía');
     }
     u.reason = reason; cache.set(u.uid, reason);
   }

@@ -1,3 +1,4 @@
+import { T, Tn } from '../i18n';
 import React, { useEffect, useMemo } from 'react';
 import { useStore, setRules, updateProject, addSheetStock, setState, placeOnSheet, previewOnSheet } from '../store';
 import { diagnosePanel, Preview } from '../core/diagnose';
@@ -28,7 +29,7 @@ function PanelDrawing({ p, flat }: { p: Panel; flat?: FlatPattern }) {
   const sw = Math.max(W, H) / 400;
   const fp = flat ? flatPaths(flat) : null;
   return (
-    <svg className="ud-svg" viewBox={`${-pad} ${-pad} ${W + 2 * pad} ${H + 2.4 * pad}`} role="img" aria-label={`Panel ${p.mark}, desarrollo ${f2(W)} por ${f2(H)} pulgadas`}>
+    <svg className="ud-svg" viewBox={`${-pad} ${-pad} ${W + 2 * pad} ${H + 2.4 * pad}`} role="img" aria-label={T`Panel ${p.mark}, desarrollo ${f2(W)} por ${f2(H)} pulgadas`}>
       <rect x={0} y={0} width={W} height={H} fill="var(--part)" stroke="var(--part-edge)" strokeWidth={sw * 1.5} />
       {fp && flat && <g transform={flatTransform(0, 0, 0, H, flat)}>
         <path d={fp.cut} stroke="var(--part-edge)" strokeWidth={sw} fill="none" />
@@ -48,7 +49,7 @@ function PanelDrawing({ p, flat }: { p: Panel; flat?: FlatPattern }) {
       <g stroke="var(--muted)" strokeWidth={sw} fill="var(--muted)" fontFamily="var(--f-mono)" fontSize={fs * 0.85}>
         <line x1={0} y1={H + fs * 2.4} x2={W} y2={H + fs * 2.4} />
         <line x1={0} y1={H + fs * 2} x2={0} y2={H + fs * 2.8} /><line x1={W} y1={H + fs * 2} x2={W} y2={H + fs * 2.8} />
-        <text x={W / 2} y={H + fs * 3.5} textAnchor="middle" stroke="none">desarrollo {f2(W)}" (A = {p.A})</text>
+        <text x={W / 2} y={H + fs * 3.5} textAnchor="middle" stroke="none">{T("desarrollo")} {f2(W)}" (A = {p.A})</text>
         <line x1={W + fs * 2.4} y1={0} x2={W + fs * 2.4} y2={H} />
         <line x1={W + fs * 2} y1={0} x2={W + fs * 2.8} y2={0} /><line x1={W + fs * 2} y1={H} x2={W + fs * 2.8} y2={H} />
         <text x={W + fs * 3.4} y={H / 2} textAnchor="middle" stroke="none" transform={`rotate(90 ${W + fs * 3.4} ${H / 2})`}>{f2(H)}" (B = {p.B})</text>
@@ -73,7 +74,7 @@ function MiniSheet({ pv, p, flat }: { pv: Preview; p: Panel; flat?: FlatPattern 
     left: [pl.x + fs * 0.4, y + pl.h / 2, 'start'], right: [pl.x + pl.w - fs * 0.4, y + pl.h / 2, 'end'],
   };
   return (
-    <svg className="ud-svg" viewBox={`${-pad} ${-pad} ${W + 2 * pad} ${H + 2 * pad + fs}`} role="img" aria-label={`Vista en lámina ${H} por ${W}`}>
+    <svg className="ud-svg" viewBox={`${-pad} ${-pad} ${W + 2 * pad} ${H + 2 * pad + fs}`} role="img" aria-label={T`Vista en lámina ${H} por ${W}`}>
       <rect x={0} y={0} width={W} height={H} fill="var(--sheet)" stroke="var(--sheet-edge)" strokeWidth={sw * 2} />
       <rect x={m.left} y={m.top} width={W - m.left - m.right} height={H - m.top - m.bottom} fill="none" stroke="var(--sheet-edge)" strokeWidth={sw} strokeDasharray={`${sw * 6} ${sw * 4}`} />
       {pv.zones.map((z, i) => (
@@ -83,7 +84,7 @@ function MiniSheet({ pv, p, flat }: { pv: Preview; p: Panel; flat?: FlatPattern 
         </g>
       ))}
       <line x1={0} y1={H / 2} x2={W} y2={H / 2} stroke="var(--muted)" strokeWidth={sw} strokeDasharray={`${sw * 3} ${sw * 3}`} />
-      <text x={fs * 0.3} y={H / 2 - fs * 0.35} fontSize={fs * 0.75} textAnchor="start" fill="var(--muted)" fontFamily="var(--f-mono)">mitad {f2(H / 2)}"</text>
+      <text x={fs * 0.3} y={H / 2 - fs * 0.35} fontSize={fs * 0.75} textAnchor="start" fill="var(--muted)" fontFamily="var(--f-mono)">{T("mitad")} {f2(H / 2)}"</text>
       <rect x={pl.x} y={y} width={pl.w} height={pl.h} fill="var(--part)" fillOpacity={0.85} stroke={pv.ok ? 'var(--part-edge)' : 'var(--bad)'} strokeWidth={sw * (pv.ok ? 1.5 : 2.5)} />
       {fp && flat && <g transform={flatTransform(pl.rot, pl.x, y, pl.h, flat)}><g transform={flip ? `matrix(1 0 0 -1 0 ${flat.height})` : undefined}>
         <path d={fp.cut} stroke="var(--part-edge)" strokeWidth={sw} fill="none" />
@@ -147,96 +148,96 @@ export function UnplacedDetail({ uid, onClose }: { uid: string; onClose: () => v
 
   return (
     <div className="ud-backdrop" onPointerDown={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="ud" role="dialog" aria-modal="true" aria-label={`Detalle del panel ${p.mark}`}>
+      <div className="ud" role="dialog" aria-modal="true" aria-label={T`Detalle del panel ${p.mark}`}>
         <header className="ud-head">
           <div>
             <h2>{p.mark} <span className={`pill ${orient === 'H' ? 'acc' : 'warn'}`}>{orient === 'H' ? 'HORIZONTAL' : 'VERTICAL'}</span> <span className="pill">{p.type}</span></h2>
-            <span className="muted">{n} {n === 1 ? 'pieza sin ubicar' : 'piezas sin ubicar'} · {p.bomSheet || p.bomFile} · {p.blankSource === 'step' ? 'desarrollo del STEP' : `desarrollo ${p.blankSource}`}</span>
+            <span className="muted">{n} {n === 1 ? T('pieza sin ubicar') : T('piezas sin ubicar')} · {p.bomSheet || p.bomFile} · {p.blankSource === 'step' ? T('desarrollo del STEP') : `desarrollo ${p.blankSource}`}</span>
           </div>
-          <button className="btn sm ghost" onClick={onClose} aria-label="Cerrar"><I.x /></button>
+          <button className="btn sm ghost" onClick={onClose} aria-label={T("Cerrar")}><I.x /></button>
         </header>
 
         <div className="ud-grid">
           <section className="ud-card">
-            <span className="label">El panel</span>
+            <span className="label">{T("El panel")}</span>
             <PanelDrawing p={p} flat={flat} />
             <dl className="kv">
               <dt>A × B</dt><dd className="num">{p.A} × {p.B}"</dd>
-              <dt>Desarrollo</dt><dd className="num">{f2(p.blankW)} × {f2(p.blankH)}"</dd>
-              <dt>Bordes</dt><dd className="num">T {p.edgeT} · B {p.edgeB} · L {p.edgeL} · R {p.edgeR}</dd>
-              <dt>Giros permitidos</dt><dd className="num">{dg.rotations.join('°, ')}°</dd>
+              <dt>{T("Desarrollo")}</dt><dd className="num">{f2(p.blankW)} × {f2(p.blankH)}"</dd>
+              <dt>{T("Bordes")}</dt><dd className="num">T {p.edgeT} · B {p.edgeB} · L {p.edgeL} · R {p.edgeR}</dd>
+              <dt>{T("Giros permitidos")}</dt><dd className="num">{dg.rotations.join('°, ')}°</dd>
             </dl>
           </section>
 
           <section className="ud-card">
-            <span className="label">Por qué no se puede ubicar</span>
-            {isStock && <div className="note"><b>Faltan láminas</b><span>Esta pieza sí cabe, pero las cantidades de lámina que pusiste no alcanzan. Abajo tienes cuántas agregar.</span></div>}
-            {dg.tooBig && <div className="viol"><b>No cabe en la lámina más grande</b><span>{dg.tooBig}</span></div>}
+            <span className="label">{T("Por qué no se puede ubicar")}</span>
+            {isStock && <div className="note"><b>{T("Faltan láminas")}</b><span>{T("Esta pieza sí cabe, pero las cantidades de lámina que pusiste no alcanzan. Abajo tienes cuántas agregar.")}</span></div>}
+            {dg.tooBig && <div className="viol"><b>{T("No cabe en la lámina más grande")}</b><span>{dg.tooBig}</span></div>}
             {dg.blockers.map(b => {
               const rule = project.rules.find(r => r.id === b.ruleId);
               return (
                 <div key={b.ruleId} className="viol">
                   <div className="row" style={{ flexWrap: 'nowrap' }}><i className="dot" style={{ background: rule?.color }} /><b className="grow">«{b.ruleName}»</b></div>
                   <ul className="ud-list">{b.details.map((d, i) => <li key={i}>{d}</li>)}</ul>
-                  {b.alt && <div className="note"><b>La regla pide que todo el panel quede en esa zona</b><span>Si lo que importa es sólo el lado {b.alt.codes}, cámbiala a «lado {b.alt.codes} dentro de la zona»: así este panel sí cabe y el lado {b.alt.codes} sigue quedando abajo.</span>
-                    <div className="row"><button className="btn sm primary" onClick={() => { setRules(rs => rs.map(r => r.id === b.ruleId ? b.alt!.rule : r)); onClose(); }}>Cambiar la regla a sólo el lado {b.alt.codes}</button></div></div>}
+                  {b.alt && <div className="note"><b>{T("La regla pide que todo el panel quede en esa zona")}</b><span>{T("Si lo que importa es sólo el lado")} {b.alt.codes}{T(", cámbiala a «lado")} {b.alt.codes} {T("dentro de la zona»: así este panel sí cabe y el lado")} {b.alt.codes} {T("sigue quedando abajo.")}</span>
+                    <div className="row"><button className="btn sm primary" onClick={() => { setRules(rs => rs.map(r => r.id === b.ruleId ? b.alt!.rule : r)); onClose(); }}>{T("Cambiar la regla a sólo el lado")} {b.alt.codes}</button></div></div>}
                   <div className="row" style={{ gap: 6 }}>
-                    {rule && <button className="btn sm" title={`Agrega "Panel mark no está en ${p.mark}" a la regla`} onClick={() => { setRules(rs => rs.map(r => r.id === rule.id ? exceptMark(r, p.mark) : r)); onClose(); }}>Excepción para {p.mark}</button>}
-                    {rule && <button className="btn sm ghost" onClick={() => { setState({ view: 'rules', selRule: rule.id }); onClose(); }}>Ver regla</button>}
+                    {rule && <button className="btn sm" title={T`Agrega "Panel mark no está en ${p.mark}" a la regla`} onClick={() => { setRules(rs => rs.map(r => r.id === rule.id ? exceptMark(r, p.mark) : r)); onClose(); }}>{T("Excepción para")} {p.mark}</button>}
+                    {rule && <button className="btn sm ghost" onClick={() => { setState({ view: 'rules', selRule: rule.id }); onClose(); }}>{T("Ver regla")}</button>}
                   </div>
                 </div>
               );
             })}
-            {!isStock && !dg.tooBig && !dg.blockers.length && <div className="note"><b>Sí cabe sola en una lámina vacía</b><span>No entró por cómo quedaron las demás piezas o por la separación por grupo (job, material, H/V). Prueba "Colocar aquí" en otra lámina o vuelve a optimizar con más tiempo.</span></div>}
+            {!isStock && !dg.tooBig && !dg.blockers.length && <div className="note"><b>{T("Sí cabe sola en una lámina vacía")}</b><span>{T("No entró por cómo quedaron las demás piezas o por la separación por grupo (job, material, H/V). Prueba \"Colocar aquí\" en otra lámina o vuelve a optimizar con más tiempo.")}</span></div>}
             {dg.current && <>
-              <span className="label" style={{ marginTop: 6 }}>Así quedaría en {dg.current.sheet.h} × {dg.current.sheet.w}</span>
+              <span className="label" style={{ marginTop: 6 }}>{T("Así quedaría en")} {dg.current.sheet.h} × {dg.current.sheet.w}</span>
               <MiniSheet pv={dg.current} p={p} flat={flat} />
               {dg.current.issues.length > 0 && <ul className="ud-list bad">{dg.current.issues.map((x, i) => <li key={i}>{x}</li>)}</ul>}
             </>}
           </section>
 
           <section className="ud-card ud-wide">
-            <span className="label">Lámina sugerida</span>
+            <span className="label">{T("Lámina sugerida")}</span>
             {sug ? (
               <div className="ud-sug">
                 <div className="grow">
                   <b>{sug.size.h} × {sug.size.w}</b>
-                  <span className="muted"> — cabe{sug.perSheet > 1 ? `n ${sug.perSheet} de este panel por lámina` : ' una por lámina'}{sug.enabled ? ' · ya está en este nesting' : ''}.</span>
+                  <span className="muted"> {T("— cabe")}{sug.perSheet > 1 ? T`n ${sug.perSheet} de este panel por lámina` : T(' una por lámina')}{sug.enabled ? T(' · ya está en este nesting') : ''}.</span>
                 </div>
-                <button className="btn sm primary" onClick={() => { addSheetStock(sug.size, addN); onClose(); }}><I.plus /> Agregar {addN} {addN === 1 ? 'lámina' : 'láminas'} {sug.size.h} × {sug.size.w}</button>
+                <button className="btn sm primary" onClick={() => { addSheetStock(sug.size, addN); onClose(); }}><I.plus /> {T("Agregar")} {addN} {addN === 1 ? T('lámina') : T('láminas')} {sug.size.h} × {sug.size.w}</button>
               </div>
             ) : dg.minSheet ? (<>
               {dg.altSuggestion && (() => { const a = dg.altSuggestion!; const blk = dg.blockers.find(b => b.alt); return (
                 <div className="ud-sug">
                   <div className="grow">
-                    <b>Recomendado: cambiar la regla a sólo el lado {a.codes}.</b>
-                    <span className="muted"> Así cabe en <b>{a.size.h} × {a.size.w}</b> ({a.perSheet} {a.perSheet === 1 ? 'por lámina' : 'de este panel por lámina'}) y el lado {a.codes} queda abajo.</span>
+                    <b>{T("Recomendado: cambiar la regla a sólo el lado")} {a.codes}.</b>
+                    <span className="muted"> {T("Así cabe en")} <b>{a.size.h} × {a.size.w}</b> ({a.perSheet} {a.perSheet === 1 ? T('por lámina') : T('de este panel por lámina')}{T(") y el lado")} {a.codes} {T("queda abajo.")}</span>
                   </div>
-                  {blk && <button className="btn sm primary" onClick={() => { setRules(rs => rs.map(r => r.id === blk.ruleId ? blk.alt!.rule : r)); onClose(); }}>Cambiar la regla</button>}
+                  {blk && <button className="btn sm primary" onClick={() => { setRules(rs => rs.map(r => r.id === blk.ruleId ? blk.alt!.rule : r)); onClose(); }}>{T("Cambiar la regla")}</button>}
                 </div>); })()}
               <div className="ud-sug alt">
                 <div className="grow">
-                  <b>Con la regla como está, ningún tamaño del catálogo sirve.</b>
-                  <span className="muted"> La lámina más pequeña que la cumple es <b>{dg.minSheet.h} × {dg.minSheet.w}</b>.{dg.altSuggestion ? '' : ' Si no la manejas, la salida es una excepción en la regla para esta marca.'}</span>
+                  <b>{T("Con la regla como está, ningún tamaño del catálogo sirve.")}</b>
+                  <span className="muted"> {T("La lámina más pequeña que la cumple es")} <b>{dg.minSheet.h} × {dg.minSheet.w}</b>.{dg.altSuggestion ? '' : T(' Si no la manejas, la salida es una excepción en la regla para esta marca.')}</span>
                 </div>
-                <button className="btn sm" onClick={() => { updateProject(pr => ({ ...pr, sheetCatalog: [...pr.sheetCatalog, dg.minSheet!] })); addSheetStock(dg.minSheet!, n); onClose(); }}><I.plus /> Usar {dg.minSheet.h} × {dg.minSheet.w}</button>
+                <button className="btn sm" onClick={() => { updateProject(pr => ({ ...pr, sheetCatalog: [...pr.sheetCatalog, dg.minSheet!] })); addSheetStock(dg.minSheet!, n); onClose(); }}><I.plus /> {T("Usar")} {dg.minSheet.h} × {dg.minSheet.w}</button>
               </div>
-            </>            ) : <span className="muted">Con estas reglas no hay lámina razonable (hasta 240") donde quepa. Revisa la regla o haz una excepción.</span>}
+            </>            ) : <span className="muted">{T("Con estas reglas no hay lámina razonable (hasta 240\") donde quepa. Revisa la regla o haz una excepción.")}</span>}
             <div className="ud-sizes">
               {dg.sizes.map(z => (
-                <span key={`${z.size.h}x${z.size.w}`} className={`ud-size ${z.ok ? 'ok' : 'no'} ${z === sug ? 'sel' : ''}`} title={z.ok ? `Caben ${z.perSheet} por lámina` : 'No cumple las reglas'}>
+                <span key={`${z.size.h}x${z.size.w}`} className={`ud-size ${z.ok ? 'ok' : 'no'} ${z === sug ? 'sel' : ''}`} title={z.ok ? T`Caben ${z.perSheet} por lámina` : T('No cumple las reglas')}>
                   {z.ok ? '✓' : '✗'} {z.size.h} × {z.size.w}{z.ok ? ` · ${z.perSheet}` : ''}{z.enabled ? ' •' : ''}
                 </span>
               ))}
             </div>
-            <span className="muted" style={{ fontSize: 12 }}>✓ cumple las reglas · número = cuántas de este panel caben solas · • = tamaño ya elegido en este nesting</span>
+            <span className="muted" style={{ fontSize: 12 }}>{T("✓ cumple las reglas · número = cuántas de este panel caben solas · • = tamaño ya elegido en este nesting")}</span>
             <div className="ud-previews">
               {dg.altSuggestion && <div className="ud-card">
-                <span className="label">Con la regla cambiada, en {dg.altSuggestion.size.h} × {dg.altSuggestion.size.w}</span>
+                <span className="label">{T("Con la regla cambiada, en")} {dg.altSuggestion.size.h} × {dg.altSuggestion.size.w}</span>
                 <MiniSheet pv={dg.altSuggestion.preview} p={p} flat={flat} />
               </div>}
               {dg.fixed && <div className="ud-card">
-                <span className="label">{dg.altSuggestion ? 'Con la regla como está' : 'Así quedaría'}, en {dg.fixed.sheet.h} × {dg.fixed.sheet.w}</span>
+                <span className="label">{dg.altSuggestion ? T('Con la regla como está') : T('Así quedaría')}{T(", en")} {dg.fixed.sheet.h} × {dg.fixed.sheet.w}</span>
                 <MiniSheet pv={dg.fixed} p={p} flat={flat} />
               </div>}
             </div>
@@ -244,10 +245,10 @@ export function UnplacedDetail({ uid, onClose }: { uid: string; onClose: () => v
         </div>
 
         <footer className="ud-foot">
-          <button className="btn sm" disabled={!items.length} title="Sin respetar reglas, marcada como error, para ver cómo quedaría" onClick={() => { if (items[0] && previewOnSheet(selSheet, items[0].iid)) onClose(); }}>Probar una en la lámina {selSheet + 1}</button>
-          <button className="btn sm" disabled={!items.length} onClick={() => { if (items[0] && placeOnSheet(selSheet, items[0].iid)) onClose(); }}>Colocar una en la lámina {selSheet + 1}</button>
+          <button className="btn sm" disabled={!items.length} title={T("Sin respetar reglas, marcada como error, para ver cómo quedaría")} onClick={() => { if (items[0] && previewOnSheet(selSheet, items[0].iid)) onClose(); }}>{T("Probar una en la lámina")} {selSheet + 1}</button>
+          <button className="btn sm" disabled={!items.length} onClick={() => { if (items[0] && placeOnSheet(selSheet, items[0].iid)) onClose(); }}>{T("Colocar una en la lámina")} {selSheet + 1}</button>
           <span className="grow" />
-          <button className="btn sm" onClick={onClose}>Cerrar</button>
+          <button className="btn sm" onClick={onClose}>{T("Cerrar")}</button>
         </footer>
       </div>
     </div>

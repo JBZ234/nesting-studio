@@ -1,3 +1,4 @@
+import { T, Tn } from '../i18n';
 import type { Panel, Rule, Cond, ZoneDef, NestSettings, Action, Layout, Violation, SheetDef, Side, Dir, Rot, EdgeSel } from './types';
 import { fieldValue, exprScope, partitionKey, orientationOf } from './panels';
 
@@ -104,7 +105,7 @@ export const facing = (side: Side, rot: Rot, flip = false): Dir => FACING[rot][f
 /** Which BOM side faces a sheet direction. */
 export const sideAt = (dir: Dir, rot: Rot, flip = false): Side => SIDES.find(s => facing(s, rot, flip) === dir)!;
 export const placedSize = (w: number, h: number, rot: Rot) => (rot === 90 || rot === 270 ? { w: h, h: w } : { w, h });
-export const DIR_LABEL: Record<Dir, string> = { top: 'arriba', bottom: 'abajo', left: 'a la izquierda', right: 'a la derecha' };
+export const DIR_LABEL: Record<Dir, string> = { top: T('arriba'), bottom: T('abajo'), left: T('a la izquierda'), right: T('a la derecha') };
 
 export function edgeCode(p: Pick<Panel, 'edgeT' | 'edgeB' | 'edgeL' | 'edgeR'>, s: Side) { return p[`edge${s}` as 'edgeT']; }
 
@@ -176,7 +177,7 @@ export function constraintsFor(p: Panel, rules: Rule[], s: NestSettings): PanelC
 }
 
 function addOrient(c: PanelConstraints, allowed: Rot[], hard: boolean, weight: number, r: Rule, label: string) {
-  c.orient.push({ allowed, hard, weight, ruleId: r.id, ruleName: r.name, label });
+  c.orient.push({ allowed, hard, weight, ruleId: r.id, ruleName: Tn(r.name), label });
   if (hard) {
     const next = c.rotations.filter(x => allowed.includes(x));
     c.rotations = next.length ? next : allowed; // on conflict the later rule wins (validation still flags it)
@@ -190,50 +191,50 @@ function applyAction(c: PanelConstraints, a: Action, r: Rule, p: Panel) {
     case 'priority': c.priority += a.value; break;
     case 'sheets': c.sheetIds = c.sheetIds ? c.sheetIds.filter(x => a.ids.includes(x)) : [...a.ids]; break;
     case 'separateBy': if (!c.separate.includes(a.field)) c.separate.push(a.field); break;
-    case 'maxPerSheet': c.maxPerSheet.push({ ruleId: r.id, ruleName: r.name, value: a.value }); break;
+    case 'maxPerSheet': c.maxPerSheet.push({ ruleId: r.id, ruleName: Tn(r.name), value: a.value }); break;
     case 'blankAdjust': c.dw += a.dw; c.dh += a.dh; break;
     case 'forbidZone':
     case 'requireZone':
-      c.zones.push({ zone: a.zone, forbid: a.type === 'forbidZone', hard: a.strength === 'hard', weight: a.weight, ruleId: r.id, ruleName: r.name });
+      c.zones.push({ zone: a.zone, forbid: a.type === 'forbidZone', hard: a.strength === 'hard', weight: a.weight, ruleId: r.id, ruleName: Tn(r.name) });
       break;
     case 'orientation':
-      addOrient(c, allowedRotations(a.mode, p.blankW, p.blankH), a.strength === 'hard', a.weight, r, ({ A_X: 'A en X', A_Y: 'A en Y', long_X: 'lado largo en X', long_Y: 'lado largo en Y', free: 'libre' })[a.mode]);
+      addOrient(c, allowedRotations(a.mode, p.blankW, p.blankH), a.strength === 'hard', a.weight, r, ({ A_X: T('A en X'), A_Y: T('A en Y'), long_X: T('lado largo en X'), long_Y: T('lado largo en Y'), free: T('libre') })[a.mode]);
       break;
     case 'edgeFacing': {
       const sides = matchSides(p, a.edge);
       if (!sides.length) break;
       const allowed = ROTS.filter(rot => sides.some(sd => facing(sd, rot, c.flip) === a.dir));
-      addOrient(c, allowed, a.strength === 'hard', a.weight, r, `lado ${a.edge.codes} ${DIR_LABEL[a.dir]}`);
+      addOrient(c, allowed, a.strength === 'hard', a.weight, r, T`lado ${a.edge.codes} ${DIR_LABEL[a.dir]}`);
       break;
     }
     case 'edgeNotOnBorder': {
       const sides = matchSides(p, a.edge);
-      if (sides.length) c.sideRules.push({ kind: 'notOnBorder', sides, tol: a.tol, hard: a.strength === 'hard', weight: a.weight, ruleId: r.id, ruleName: r.name, codes: a.edge.codes });
+      if (sides.length) c.sideRules.push({ kind: 'notOnBorder', sides, tol: a.tol, hard: a.strength === 'hard', weight: a.weight, ruleId: r.id, ruleName: Tn(r.name), codes: a.edge.codes });
       break;
     }
     case 'edgeZone': {
       const sides = matchSides(p, a.edge);
-      if (sides.length) c.sideRules.push({ kind: 'zone', sides, tol: 0, zone: a.zone, mode: a.mode, part: a.part ?? 'return', hard: a.strength === 'hard', weight: a.weight, ruleId: r.id, ruleName: r.name, codes: a.edge.codes });
+      if (sides.length) c.sideRules.push({ kind: 'zone', sides, tol: 0, zone: a.zone, mode: a.mode, part: a.part ?? 'return', hard: a.strength === 'hard', weight: a.weight, ruleId: r.id, ruleName: Tn(r.name), codes: a.edge.codes });
       break;
     }
     case 'edgeNoCommonLine': {
       const sides = matchSides(p, a.edge);
       const withCodes = (a.withCodes ?? '').toUpperCase().split(/[,;| ]+/).map(x => x.trim()).filter(Boolean);
       if (!withCodes.length) { for (const sd of sides) c.clearance[sd] = Math.max(c.clearance[sd], a.clearance); }
-      else if (sides.length) c.pairRules.push({ sides, withCodes, clearance: a.clearance, ruleId: r.id, ruleName: r.name, codes: a.edge.codes });
+      else if (sides.length) c.pairRules.push({ sides, withCodes, clearance: a.clearance, ruleId: r.id, ruleName: Tn(r.name), codes: a.edge.codes });
       break;
     }
     case 'edgeClearance': {
       const sides = matchSides(p, a.edge);
       const inch = Math.max(0, a.mm) / 25.4;
       if (!sides.length || a.mm < 0.1) break;   // below 0.1 mm it's just touching
-      if (a.border) c.sideRules.push({ kind: 'notOnBorder', sides, tol: inch, mm: a.mm, hard: true, weight: 10, ruleId: r.id, ruleName: r.name, codes: a.edge.codes });
+      if (a.border) c.sideRules.push({ kind: 'notOnBorder', sides, tol: inch, mm: a.mm, hard: true, weight: 10, ruleId: r.id, ruleName: Tn(r.name), codes: a.edge.codes });
       // '*' = any side of the neighbour that faces this one (parallel faces), coded or not
-      if (a.panels) c.pairRules.push({ sides, withCodes: ['*'], clearance: inch, ruleId: r.id, ruleName: r.name, codes: a.edge.codes, mm: a.mm });
+      if (a.panels) c.pairRules.push({ sides, withCodes: ['*'], clearance: inch, ruleId: r.id, ruleName: Tn(r.name), codes: a.edge.codes, mm: a.mm });
       break;
     }
     case 'gravity':
-      c.gravity = { dir: a.dir, weight: a.weight, ruleName: r.name };
+      c.gravity = { dir: a.dir, weight: a.weight, ruleName: Tn(r.name) };
       break;
   }
 }
@@ -342,9 +343,9 @@ export function pairClearance(a: PanelConstraints | undefined, ra: Rect, rotA: R
   if (need <= 0 || gap >= need - 1e-3) return { need: 0 };   // 1e-3" tolerance: positions are stored rounded to 4 decimals
   if (rule?.withCodes.includes('*')) {
     const mine = a.pairRules.includes(rule) ? ca : cb, other = a.pairRules.includes(rule) ? cb : ca;
-    return { need, rule, msg: `El lado ${mine || '—'} queda a ${(gap * 25.4).toFixed(1)} mm del ${other ? `lado ${other}` : 'lado'} del vecino (mínimo ${rule.mm ?? +(need * 25.4).toFixed(1)} mm)` };
+    return { need, rule, msg: T`El lado ${mine || '—'} queda a ${(gap * 25.4).toFixed(1)} mm del ${other ? T`lado ${other}` : T('lado')} del vecino (mínimo ${rule.mm ?? +(need * 25.4).toFixed(1)} mm)` };
   }
-  return { need, rule, msg: `El lado ${ca} queda a ${gap < 1e-3 ? '0' : gap.toFixed(2)}" del lado ${cb} del vecino (sin common line: mínimo ${need}")` };
+  return { need, rule, msg: T`El lado ${ca} queda a ${gap < 1e-3 ? '0' : gap.toFixed(2)}" del lado ${cb} del vecino (sin common line: mínimo ${need}")` };
 }
 
 export interface SideViolation { hard: boolean; weight: number; ruleId: string; ruleName: string; msg: string }
@@ -358,8 +359,8 @@ export function sideViolations(c: PanelConstraints, r: Rect, rot: Rot, W: number
       const code = p ? edgeCode(p, sd) : sr.codes;
       if (sr.kind === 'notOnBorder') {
         const dist = d === 'left' ? r.x : d === 'right' ? W - r.x - r.w : d === 'bottom' ? r.y : H - r.y - r.h;
-        if (dist < sr.tol - EPS && sr.mm != null) { out.push({ hard: sr.hard, weight: sr.weight, ruleId: sr.ruleId, ruleName: sr.ruleName, msg: `El lado ${code} queda a ${(Math.max(0, dist) * 25.4).toFixed(1)} mm del borde ${d === 'top' ? 'superior' : d === 'bottom' ? 'inferior' : d === 'left' ? 'izquierdo' : 'derecho'} (mínimo ${sr.mm} mm)` }); break; }
-        if (dist < sr.tol - EPS) { out.push({ hard: sr.hard, weight: sr.weight, ruleId: sr.ruleId, ruleName: sr.ruleName, msg: `El lado ${code} queda en el borde ${d === 'top' ? 'superior' : d === 'bottom' ? 'inferior' : d === 'left' ? 'izquierdo' : 'derecho'} de la lámina` }); break; }
+        if (dist < sr.tol - EPS && sr.mm != null) { out.push({ hard: sr.hard, weight: sr.weight, ruleId: sr.ruleId, ruleName: sr.ruleName, msg: T`El lado ${code} queda a ${(Math.max(0, dist) * 25.4).toFixed(1)} mm del borde ${d === 'top' ? T('superior') : d === 'bottom' ? T('inferior') : d === 'left' ? T('izquierdo') : T('derecho')} (mínimo ${sr.mm} mm)` }); break; }
+        if (dist < sr.tol - EPS) { out.push({ hard: sr.hard, weight: sr.weight, ruleId: sr.ruleId, ruleName: sr.ruleName, msg: T`El lado ${code} queda en el borde ${d === 'top' ? T('superior') : d === 'bottom' ? T('inferior') : d === 'left' ? T('izquierdo') : T('derecho')} de la lámina` }); break; }
       } else if (sr.zone) {
         const z = zoneRect(sr.zone, W, H);
         const depth = sr.part === 'edge' ? 0 : Math.min(c.returns?.[sd] ?? 0, d === 'left' || d === 'right' ? r.w : r.h);
@@ -372,7 +373,7 @@ export function sideViolations(c: PanelConstraints, r: Rect, rot: Rot, W: number
           const sg = sideSegment(r, d);
           bad = sr.mode === 'outside' ? segHits(sg, z) : !segInside(sg, z);
         }
-        if (bad) { out.push({ hard: sr.hard, weight: sr.weight, ruleId: sr.ruleId, ruleName: sr.ruleName, msg: sr.mode === 'outside' ? `El lado ${code} entra en la zona prohibida` : `El lado ${code} sale de la zona permitida` }); break; }
+        if (bad) { out.push({ hard: sr.hard, weight: sr.weight, ruleId: sr.ruleId, ruleName: sr.ruleName, msg: sr.mode === 'outside' ? T`El lado ${code} entra en la zona prohibida` : T`El lado ${code} sale de la zona permitida` }); break; }
       }
     }
   }
@@ -404,8 +405,8 @@ export function validateLayout(layout: Layout, panels: Map<string, Panel>, cons:
       const c = cons.get(pl.uid); const p = panels.get(pl.uid);
       if (!c || !p) continue;
       const r: Rect = { x: pl.x, y: pl.y, w: pl.w, h: pl.h };
-      if (pl.trial) add({ iid: pl.iid, ruleId: '_trial', ruleName: 'Pieza de prueba', hard: true, msg: 'Pieza de prueba: no sale en la exportación y se quita al optimizar. Bórrala (Supr) cuando termines de revisarla.', penalty: 0 });
-      if (!inside(r, usable)) add({ iid: pl.iid, ruleId: '_bounds', ruleName: 'Límites de lámina', hard: true, msg: 'Fuera del área útil (márgenes)', penalty: 0 });
+      if (pl.trial) add({ iid: pl.iid, ruleId: '_trial', ruleName: T('Pieza de prueba'), hard: true, msg: T('Pieza de prueba: no sale en la exportación y se quita al optimizar. Bórrala (Supr) cuando termines de revisarla.'), penalty: 0 });
+      if (!inside(r, usable)) add({ iid: pl.iid, ruleId: '_bounds', ruleName: T('Límites de lámina'), hard: true, msg: T('Fuera del área útil (márgenes)'), penalty: 0 });
       const a = infl[i];
       const ra = { x: r.x - a.l, y: r.y - a.b, w: r.w + a.l + a.r, h: r.h + a.b + a.t };
       for (let j = i + 1; j < sh.placements.length; j++) {
@@ -416,31 +417,31 @@ export function validateLayout(layout: Layout, panels: Map<string, Panel>, cons:
         if (intersects(shrink(ra, 1e-4), shrink(rb, 1e-4))) {
           const ov = intersects(r, q);
           const qm = panels.get(q.uid)?.mark;
-          add({ iid: pl.iid, ruleId: '_overlap', ruleName: ov ? 'Traslape' : 'Separación', hard: true, msg: ov ? `Se traslapa con ${qm}` : `Falta separación con ${qm} (lado sin common line)`, penalty: 0 });
-          add({ iid: q.iid, ruleId: '_overlap', ruleName: ov ? 'Traslape' : 'Separación', hard: true, msg: ov ? `Se traslapa con ${p.mark}` : `Falta separación con ${p.mark} (lado sin common line)`, penalty: 0 });
+          add({ iid: pl.iid, ruleId: '_overlap', ruleName: ov ? T('Traslape') : T('Separación'), hard: true, msg: ov ? T`Se traslapa con ${qm}` : T`Falta separación con ${qm} (lado sin common line)`, penalty: 0 });
+          add({ iid: q.iid, ruleId: '_overlap', ruleName: ov ? T('Traslape') : T('Separación'), hard: true, msg: ov ? T`Se traslapa con ${p.mark}` : T`Falta separación con ${p.mark} (lado sin common line)`, penalty: 0 });
         } else {
           const pc = pairClearance(c, r, pl.rot, cons.get(q.uid), q, q.rot);
           if (pc.need) {
             const qm = panels.get(q.uid)?.mark;
-            add({ iid: pl.iid, ruleId: pc.rule!.ruleId, ruleName: pc.rule!.ruleName, hard: true, msg: `${pc.msg} — con ${qm}`, penalty: 0 });
-            add({ iid: q.iid, ruleId: pc.rule!.ruleId, ruleName: pc.rule!.ruleName, hard: true, msg: `Sin common line con ${p.mark}: faltan ${pc.need}" de separación`, penalty: 0 });
+            add({ iid: pl.iid, ruleId: pc.rule!.ruleId, ruleName: pc.rule!.ruleName, hard: true, msg: T`${pc.msg} — con ${qm}`, penalty: 0 });
+            add({ iid: q.iid, ruleId: pc.rule!.ruleId, ruleName: pc.rule!.ruleName, hard: true, msg: T`Sin common line con ${p.mark}: faltan ${pc.need}" de separación`, penalty: 0 });
           }
         }
       }
-      for (const z of c.zones) if (zoneViolated(r, z, sh.w, sh.h)) add({ iid: pl.iid, ruleId: z.ruleId, ruleName: z.ruleName, hard: z.hard, msg: z.forbid ? 'Ubicado en zona prohibida' : 'Fuera de la zona obligatoria', penalty: z.hard ? 0 : z.weight });
-      for (const o of c.orient) if (!o.allowed.includes(pl.rot)) add({ iid: pl.iid, ruleId: o.ruleId, ruleName: o.ruleName, hard: o.hard, msg: `Debe ir con ${o.label} (está girado ${ROT_LABEL(pl.rot)})`, penalty: o.hard ? 0 : o.weight });
-      if (!c.rotations.includes(pl.rot) && !c.orient.some(o => o.hard)) add({ iid: pl.iid, ruleId: '_rot', ruleName: 'Rotación', hard: true, msg: 'Rotación desactivada en ajustes', penalty: 0 });
+      for (const z of c.zones) if (zoneViolated(r, z, sh.w, sh.h)) add({ iid: pl.iid, ruleId: z.ruleId, ruleName: z.ruleName, hard: z.hard, msg: z.forbid ? T('Ubicado en zona prohibida') : T('Fuera de la zona obligatoria'), penalty: z.hard ? 0 : z.weight });
+      for (const o of c.orient) if (!o.allowed.includes(pl.rot)) add({ iid: pl.iid, ruleId: o.ruleId, ruleName: o.ruleName, hard: o.hard, msg: T`Debe ir con ${o.label} (está girado ${ROT_LABEL(pl.rot)})`, penalty: o.hard ? 0 : o.weight });
+      if (!c.rotations.includes(pl.rot) && !c.orient.some(o => o.hard)) add({ iid: pl.iid, ruleId: '_rot', ruleName: T('Rotación'), hard: true, msg: T('Rotación desactivada en ajustes'), penalty: 0 });
       for (const v of sideViolations(c, r, pl.rot, sh.w, sh.h, p)) add({ iid: pl.iid, ruleId: v.ruleId, ruleName: v.ruleName, hard: v.hard, msg: v.msg, penalty: v.hard ? 0 : v.weight });
-      if (c.sheetIds && !c.sheetIds.includes(sh.sheetId)) add({ iid: pl.iid, ruleId: '_sheet', ruleName: 'Lámina permitida', hard: true, msg: 'Este tamaño de lámina no está permitido para el panel', penalty: 0 });
+      if (c.sheetIds && !c.sheetIds.includes(sh.sheetId)) add({ iid: pl.iid, ruleId: '_sheet', ruleName: T('Lámina permitida'), hard: true, msg: T('Este tamaño de lámina no está permitido para el panel'), penalty: 0 });
       for (const mx of c.maxPerSheet) counts.set(mx.ruleId, (counts.get(mx.ruleId) || 0) + 1);
     }
     for (const pl of sh.placements) {
       const c = cons.get(pl.uid); if (!c) continue;
-      for (const mx of c.maxPerSheet) if ((counts.get(mx.ruleId) || 0) > mx.value) add({ iid: pl.iid, ruleId: mx.ruleId, ruleName: mx.ruleName, hard: true, msg: `Máximo ${mx.value} por lámina`, penalty: 0 });
+      for (const mx of c.maxPerSheet) if ((counts.get(mx.ruleId) || 0) > mx.value) add({ iid: pl.iid, ruleId: mx.ruleId, ruleName: mx.ruleName, hard: true, msg: T`Máximo ${mx.value} por lámina`, penalty: 0 });
     }
     // partition mixing
     const keys = new Set(sh.placements.map(pl => { const p = panels.get(pl.uid); const c = cons.get(pl.uid); return p && c ? partitionKey(p, [...s.partitionBy, ...c.separate], s) : ''; }));
-    if (keys.size > 1) for (const pl of sh.placements) add({ iid: pl.iid, ruleId: '_partition', ruleName: 'Separación por grupo', hard: true, msg: 'Paneles de grupos distintos en la misma lámina', penalty: 0 });
+    if (keys.size > 1) for (const pl of sh.placements) add({ iid: pl.iid, ruleId: '_partition', ruleName: T('Separación por grupo'), hard: true, msg: T('Paneles de grupos distintos en la misma lámina'), penalty: 0 });
   }
   void sheetDefs;
   return out;

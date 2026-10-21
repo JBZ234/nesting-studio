@@ -1,3 +1,4 @@
+import { T, Tn } from '../i18n';
 import type { Panel, Project, Side, NestSettings } from './types';
 import type { BomResult } from './bom';
 import { parseStepFileName } from './bom';
@@ -66,7 +67,7 @@ export function buildPanels(boms: BomResult[], steps: StepEntry[], project: Proj
     const p: Panel = { ...bp, include: true, blankW: 0, blankH: 0, blankSource: 'estimado' };
     const won = seen.get(p.uid);
     if (won) {
-      if (won === b.file) { warnings.push(`Marca repetida ${p.mark} dentro de ${b.file}: se sumó la cantidad`); const q = panels.find(x => x.uid === p.uid); if (q) q.qty += p.qty; }
+      if (won === b.file) { warnings.push(T`Marca repetida ${p.mark} dentro de ${b.file}: se sumó la cantidad`); const q = panels.find(x => x.uid === p.uid); if (q) q.qty += p.qty; }
       else { const s = superseded.get(b.file) || { by: won, n: 0 }; s.n++; superseded.set(b.file, s); }
       continue;
     }
@@ -74,16 +75,16 @@ export function buildPanels(boms: BomResult[], steps: StepEntry[], project: Proj
     panels.push(p);
     const arr = byMark.get(p.mark) || []; arr.push(p); byMark.set(p.mark, arr);
   }
-  for (const [file, s] of superseded) warnings.unshift(`${file}: ${s.n} marcas ya estaban en ${s.by} (más reciente); se ignoraron para no duplicar piezas`);
+  for (const [file, s] of superseded) warnings.unshift(T`${file}: ${s.n} marcas ya estaban en ${s.by} (más reciente); se ignoraron para no duplicar piezas`);
   const flats: Record<string, FlatPattern> = {};
   for (const s of steps) {
     const info = parseStepFileName(s.file);
-    if (!info) { warnings.push(`Nombre STEP no reconocido: ${s.file}`); continue; }
+    if (!info) { warnings.push(T`Nombre STEP no reconocido: ${s.file}`); continue; }
     const cands = byMark.get(info.mark) || [];
     let p = cands.find(c => c.type === info.type && c.edgeT === info.edgeT && c.edgeB === info.edgeB && c.edgeL === info.edgeL && c.edgeR === info.edgeR) || cands[0];
     if (cands.length > 1) {
       const exact = cands.filter(c => c.type === info.type && c.edgeT === info.edgeT && c.edgeB === info.edgeB && c.edgeL === info.edgeL && c.edgeR === info.edgeR);
-      if (exact.length !== 1) warnings.push(`STEP ${s.file}: marca ${info.mark} aparece en varios BOM; se usó ${p?.bomFile}`);
+      if (exact.length !== 1) warnings.push(T`STEP ${s.file}: marca ${info.mark} aparece en varios BOM; se usó ${p?.bomFile}`);
     }
     if (!p) {
       if (!s.flat) continue;
@@ -93,17 +94,17 @@ export function buildPanels(boms: BomResult[], steps: StepEntry[], project: Proj
         type: info.type, depth: info.depth, edgeT: info.edgeT, edgeB: info.edgeB, edgeL: info.edgeL, edgeR: info.edgeR,
         mtl: info.mtl, thk: info.thk,
         A: +(s.flat.baseBox.x1 - s.flat.baseBox.x0).toFixed(3), B: +(s.flat.baseBox.y1 - s.flat.baseBox.y0).toFixed(3),
-        grain: '', notes: 'Sin línea en BOM', options: '', material: info.mtl, alloy: '', thickness: '', finish: '', finishCode: '',
+        grain: '', notes: T('Sin línea en BOM'), options: '', material: info.mtl, alloy: '', thickness: '', finish: '', finishCode: '',
         bomFile: '', bomSheet: '', extra: {}, blankW: 0, blankH: 0, blankSource: 'step',
       };
       panels.push(p);
-      warnings.push(`STEP ${s.file} no tiene línea en ningún BOM: se agregó con cantidad 1`);
+      warnings.push(T`STEP ${s.file} no tiene línea en ningún BOM: se agregó con cantidad 1`);
     } else if (p.type && info.type && (p.type !== info.type || p.edgeT !== info.edgeT || p.edgeL !== info.edgeL || p.edgeR !== info.edgeR || p.edgeB !== info.edgeB)) {
-      warnings.push(`STEP ${s.file}: tipo/bordes no coinciden con BOM (${p.type} ${p.edgeT}-${p.edgeB}-${p.edgeL}-${p.edgeR})`);
+      warnings.push(T`STEP ${s.file}: tipo/bordes no coinciden con BOM (${p.type} ${p.edgeT}-${p.edgeB}-${p.edgeL}-${p.edgeR})`);
     }
     p.stepFile = s.file;
     if (s.flat) flats[p.uid] = s.flat;
-    else if (s.error) warnings.push(`STEP ${s.file}: ${s.error}`);
+    else if (s.error) warnings.push(T`STEP ${s.file}: ${s.error}`);
   }
   const learned = calibrateAllowances(panels, flats);
   const allow = { ...learned, ...project.edgeAllowances };
@@ -133,36 +134,36 @@ export function buildPanels(boms: BomResult[], steps: StepEntry[], project: Proj
 export interface FieldDef { key: string; label: string; kind: 'number' | 'text' | 'edge' | 'bool'; group: string }
 
 export const FIELDS: FieldDef[] = [
-  { key: 'anyEdge', label: 'Cualquier borde (T/B/L/R)', kind: 'edge', group: 'Bordes' },
-  { key: 'edgeT', label: 'Borde superior (T)', kind: 'edge', group: 'Bordes' },
-  { key: 'edgeB', label: 'Borde inferior (B)', kind: 'edge', group: 'Bordes' },
-  { key: 'edgeL', label: 'Borde izquierdo (L)', kind: 'edge', group: 'Bordes' },
-  { key: 'edgeR', label: 'Borde derecho (R)', kind: 'edge', group: 'Bordes' },
-  { key: 'sideEdges', label: 'Bordes laterales (L/R)', kind: 'edge', group: 'Bordes' },
-  { key: 'orientation', label: 'Orientación del panel (H/V)', kind: 'text', group: 'Geometría' },
-  { key: 'A', label: 'Medida A', kind: 'number', group: 'Geometría' },
-  { key: 'B', label: 'Medida B', kind: 'number', group: 'Geometría' },
-  { key: 'C', label: 'Medida C', kind: 'number', group: 'Geometría' },
-  { key: 'Z', label: 'Profundidad Z', kind: 'number', group: 'Geometría' },
-  { key: 'blankW', label: 'Desarrollo ancho (eje A)', kind: 'number', group: 'Geometría' },
-  { key: 'blankH', label: 'Desarrollo alto (eje B)', kind: 'number', group: 'Geometría' },
-  { key: 'blankLong', label: 'Desarrollo lado largo', kind: 'number', group: 'Geometría' },
-  { key: 'blankShort', label: 'Desarrollo lado corto', kind: 'number', group: 'Geometría' },
-  { key: 'area', label: 'Área del desarrollo (in²)', kind: 'number', group: 'Geometría' },
-  { key: 'type', label: 'Tipo (FLAT, CORN…)', kind: 'text', group: 'BOM' },
+  { key: 'anyEdge', label: T('Cualquier borde (T/B/L/R)'), kind: 'edge', group: T('Bordes') },
+  { key: 'edgeT', label: T('Borde superior (T)'), kind: 'edge', group: T('Bordes') },
+  { key: 'edgeB', label: T('Borde inferior (B)'), kind: 'edge', group: T('Bordes') },
+  { key: 'edgeL', label: T('Borde izquierdo (L)'), kind: 'edge', group: T('Bordes') },
+  { key: 'edgeR', label: T('Borde derecho (R)'), kind: 'edge', group: T('Bordes') },
+  { key: 'sideEdges', label: T('Bordes laterales (L/R)'), kind: 'edge', group: T('Bordes') },
+  { key: 'orientation', label: T('Orientación del panel (H/V)'), kind: 'text', group: T('Geometría') },
+  { key: 'A', label: T('Medida A'), kind: 'number', group: T('Geometría') },
+  { key: 'B', label: T('Medida B'), kind: 'number', group: T('Geometría') },
+  { key: 'C', label: T('Medida C'), kind: 'number', group: T('Geometría') },
+  { key: 'Z', label: T('Profundidad Z'), kind: 'number', group: T('Geometría') },
+  { key: 'blankW', label: T('Desarrollo ancho (eje A)'), kind: 'number', group: T('Geometría') },
+  { key: 'blankH', label: T('Desarrollo alto (eje B)'), kind: 'number', group: T('Geometría') },
+  { key: 'blankLong', label: T('Desarrollo lado largo'), kind: 'number', group: T('Geometría') },
+  { key: 'blankShort', label: T('Desarrollo lado corto'), kind: 'number', group: T('Geometría') },
+  { key: 'area', label: T('Área del desarrollo (in²)'), kind: 'number', group: T('Geometría') },
+  { key: 'type', label: T('Tipo (FLAT, CORN…)'), kind: 'text', group: 'BOM' },
   { key: 'depth', label: 'Depth', kind: 'text', group: 'BOM' },
   { key: 'mark', label: 'Panel mark', kind: 'text', group: 'BOM' },
-  { key: 'qty', label: 'Cantidad', kind: 'number', group: 'BOM' },
+  { key: 'qty', label: T('Cantidad'), kind: 'number', group: 'BOM' },
   { key: 'job', label: 'Job #', kind: 'text', group: 'BOM' },
   { key: 'grain', label: 'Grain', kind: 'text', group: 'BOM' },
   { key: 'options', label: 'Options', kind: 'text', group: 'BOM' },
   { key: 'notes', label: 'Notes', kind: 'text', group: 'BOM' },
-  { key: 'mtl', label: 'Material (código)', kind: 'text', group: 'BOM' },
-  { key: 'thk', label: 'Calibre (código)', kind: 'text', group: 'BOM' },
+  { key: 'mtl', label: T('Material (código)'), kind: 'text', group: 'BOM' },
+  { key: 'thk', label: T('Calibre (código)'), kind: 'text', group: 'BOM' },
   { key: 'material', label: 'Material', kind: 'text', group: 'BOM' },
   { key: 'finish', label: 'Color', kind: 'text', group: 'BOM' },
-  { key: 'bomSheet', label: 'Hoja del BOM', kind: 'text', group: 'BOM' },
-  { key: 'hasStep', label: 'Tiene STEP', kind: 'bool', group: 'BOM' },
+  { key: 'bomSheet', label: T('Hoja del BOM'), kind: 'text', group: 'BOM' },
+  { key: 'hasStep', label: T('Tiene STEP'), kind: 'bool', group: 'BOM' },
 ];
 
 export function orientationOf(p: Pick<Panel, 'A' | 'B'>, s: Pick<NestSettings, 'horizontalWhen'>): 'H' | 'V' {

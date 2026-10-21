@@ -1,3 +1,4 @@
+import { T, Tn, getLang } from '../i18n';
 import type { Layout, Panel, NestSettings } from '../core/types';
 import type { FlatPattern } from '../core/unfold';
 import { groupIdentical } from '../core/nest';
@@ -108,7 +109,7 @@ export function layoutPdf(layout: Layout, panels: Panel[], flats: Record<string,
   const groups = groupIdentical(layout);
   const layoutNo = new Map<string, number>(); const sameAs = new Map<string, number[]>();
   groups.forEach((g, i) => g.ids.forEach(id => { layoutNo.set(id, i + 1); sameAs.set(id, g.ids.map(x => layout.sheets.findIndex(sh => sh.id === x) + 1)); }));
-  const date = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' });
+  const date = new Date().toLocaleDateString((getLang() === 'en' ? 'en-US' : 'es-CO'), { year: 'numeric', month: 'short', day: 'numeric' });
   const pages: Page[] = [];
   const realPls = (i: number) => layout.sheets[i].placements.filter(p => !p.trial);
   const utilOf = (i: number) => { const sh = layout.sheets[i]; return realPls(i).reduce((a, pl) => { const p = pm.get(pl.uid); return a + (p ? p.blankW * p.blankH : pl.w * pl.h); }, 0) / (sh.w * sh.h); };
@@ -117,11 +118,11 @@ export function layoutPdf(layout: Layout, panels: Panel[], flats: Record<string,
   if (o.onlySheet === undefined) {
     const pg = new Page(); pages.push(pg);
     pg.text(40, PH - 50, 20, o.title, { bold: true });
-    pg.text(40, PH - 70, 10, `${date} · ${layout.sheets.length} láminas · ${groups.length} acomodos distintos · aprovechamiento ${(layout.stats.utilization * 100).toFixed(1)}% · ${layout.sheets.reduce((a, _, i) => a + realPls(i).length, 0)} piezas${layout.unplaced.length ? ` · ${layout.unplaced.length} sin ubicar` : ''}`, { color: [0.35, 0.35, 0.35] });
+    pg.text(40, PH - 70, 10, T`${date} · ${layout.sheets.length} láminas · ${groups.length} acomodos distintos · aprovechamiento ${(layout.stats.utilization * 100).toFixed(1)}% · ${layout.sheets.reduce((a, _, i) => a + realPls(i).length, 0)} piezas${layout.unplaced.length ? T` · ${layout.unplaced.length} sin ubicar` : ''}`, { color: [0.35, 0.35, 0.35] });
     const bySize = new Map<string, number>(); layout.sheets.forEach(sh => bySize.set(`${sh.w} × ${sh.h}"`, (bySize.get(`${sh.w} × ${sh.h}"`) || 0) + 1));
-    pg.text(40, PH - 86, 10, 'Láminas por tamaño: ' + [...bySize].map(([k, v]) => `${k}: ${v}`).join('   '), { color: [0.35, 0.35, 0.35] });
+    pg.text(40, PH - 86, 10, T('Láminas por tamaño: ') + [...bySize].map(([k, v]) => `${k}: ${v}`).join('   '), { color: [0.35, 0.35, 0.35] });
     const cols = [40, 95, 165, 235, 290, 355];
-    const head = ['Lámina', 'Tamaño', 'Acomodo', 'Piezas', 'Aprov.', 'Contenido'];
+    const head = [T('Lámina'), T('Tamaño'), T('Acomodo'), T('Piezas'), T('Aprov.'), T('Contenido')];
     let y = PH - 115; let col = 0;
     const rowH = 13;
     const drawHead = () => { head.forEach((h, k) => pg.text(cols[k] + col, y, 8.5, h, { bold: true })); pg.lw(0.5).rgbS([0.6, 0.6, 0.6]).line(40, y - 4, PW - 40, y - 4); y -= rowH + 2; };
@@ -146,13 +147,13 @@ export function layoutPdf(layout: Layout, panels: Panel[], flats: Record<string,
     // identical sheets: one page only (the first of the group), titled with all their numbers
     if (o.onlySheet === undefined && same.length > 1 && same[0] !== i + 1) return;
     const pg = new Page(); pages.push(pg);
-    const title = same.length > 1 ? `Lámina ${same.join('-')}` : `Lámina ${i + 1}`;
-    const info = `de ${layout.sheets.length} · ${sh.w} × ${sh.h}" · ${realPls(i).length} piezas · aprovechamiento ${(utilOf(i) * 100).toFixed(1)}%${sh.locked ? ' · bloqueada' : ''}`;
+    const title = same.length > 1 ? T`Lámina ${same.join('-')}` : T`Lámina ${i + 1}`;
+    const info = T`de ${layout.sheets.length} · ${sh.w} × ${sh.h}" · ${realPls(i).length} piezas · aprovechamiento ${(utilOf(i) * 100).toFixed(1)}%${sh.locked ? T(' · bloqueada') : ''}`;
     let tfs = 18; while (tfs > 9 && textW(title, tfs, true) + 12 + textW(info, 11) > PW - 72 - 150) tfs -= 1;
     pg.text(36, PH - 40, tfs, title, { bold: true });
     pg.text(36 + textW(title, tfs, true) + 12, PH - 40, 11, info, { color: [0.3, 0.3, 0.3] });
     pg.text(PW - 36, PH - 40, 9, `${o.title} · ${date}`, { align: 'r', color: [0.45, 0.45, 0.45] });
-    if (same.length > 1) pg.text(36, PH - 58, 12, `Se repite ${same.length} veces — cortar ${same.length} láminas iguales (acomodo ${layoutNo.get(sh.id)})`, { bold: true, color: [0.75, 0.35, 0.05] });
+    if (same.length > 1) pg.text(36, PH - 58, 12, T`Se repite ${same.length} veces — cortar ${same.length} láminas iguales (acomodo ${layoutNo.get(sh.id)})`, { bold: true, color: [0.75, 0.35, 0.05] });
     // fit the sheet into the drawing area (y up, like the sheet)
     const ax = 36, ay = 58, aw = PW - 72, ah = PH - 58 - 76;
     const k = Math.min(aw / sh.w, ah / sh.h);
@@ -188,7 +189,7 @@ export function layoutPdf(layout: Layout, panels: Panel[], flats: Record<string,
       const fs = Math.max(4, Math.min(16, H / 3.2, W / Math.max(3, label.length * 0.7)));
       const cx = X(pl.x + pl.w / 2), cy = Y(pl.y + pl.h / 2);
       pg.text(cx, cy + fs * 0.1, fs, label, { bold: true, align: 'c', color: [0.1, 0.1, 0.15] });
-      const sub = `${pl.w.toFixed(2)} × ${pl.h.toFixed(2)}${pl.rot ? ` · ${pl.rot}°` : ''}${fl ? ' · espejo' : ''}`;
+      const sub = `${pl.w.toFixed(2)} × ${pl.h.toFixed(2)}${pl.rot ? ` · ${pl.rot}°` : ''}${fl ? T(' · espejo') : ''}`;
       const sfs = Math.min(fs * 0.55, W / (sub.length * 0.55));
       if (sfs >= 3.2) pg.text(cx, cy - fs * 0.75, sfs, sub, { align: 'c', color: [0.3, 0.3, 0.3] });
       // edge codes on each side
@@ -208,10 +209,10 @@ export function layoutPdf(layout: Layout, panels: Panel[], flats: Record<string,
     // origin + contents
     pg.rgbF([0.75, 0.35, 0.05]).rect(X(0) - 2, (s.originForExport === 'BL' ? Y(0) : Y(sh.h)) - 2, 4, 4, 'f');
     const cnt = new Map<string, number>(); for (const pl of realPls(i)) { const mk = pm.get(pl.uid)?.mark ?? pl.uid; cnt.set(mk, (cnt.get(mk) || 0) + 1); }
-    let content = 'Contenido: ' + [...cnt].map(([mk, c]) => c > 1 ? `${mk} ×${c}` : mk).join(', ');
+    let content = T('Contenido: ') + [...cnt].map(([mk, c]) => c > 1 ? `${mk} ×${c}` : mk).join(', ');
     while (content.length > 14 && textW(content, 9) > PW - 72) content = content.slice(0, -4) + '…';
     pg.text(36, 24, 9, content, { color: [0.3, 0.3, 0.3] });
-    pg.text(PW - 36, 24, 8, 'Línea continua: corte · roja punteada: doblez · naranja: condición de cada lado', { align: 'r', color: [0.5, 0.5, 0.5] });
+    pg.text(PW - 36, 24, 8, T('Línea continua: corte · roja punteada: doblez · naranja: condición de cada lado'), { align: 'r', color: [0.5, 0.5, 0.5] });
   });
   return buildPdf(pages, o.title);
 }

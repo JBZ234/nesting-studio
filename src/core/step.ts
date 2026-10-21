@@ -1,3 +1,4 @@
+import { T, Tn } from '../i18n';
 // Minimal, dependency-free STEP (ISO-10303-21, AP203/AP214) B-rep reader.
 // Only what is needed to unfold sheet-metal parts: planes, cylinders,
 // lines, circles, B-spline curves, topology (faces/loops/edges/vertices).
@@ -302,7 +303,7 @@ export function loadStepModel(text: string, fileName = ''): StepModel {
     if (face.loops.length && !face.loops.some(l => l.outer)) face.loops[0].outer = true;
     faces.push(face);
   }
-  if (!faces.length) warnings.push('No se encontraron caras B-rep en el STEP');
+  if (!faces.length) warnings.push(T('No se encontraron caras B-rep en el STEP'));
   return { name: fileName, unitToInch: S, faces, edges, bbox: { min, max }, warnings };
 }
 

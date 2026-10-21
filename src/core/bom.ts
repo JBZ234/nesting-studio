@@ -1,3 +1,4 @@
+import { T, Tn } from '../i18n';
 import * as XLSX from 'xlsx';
 import type { Panel } from './types';
 
@@ -87,7 +88,7 @@ export function parseBomWorkbook(data: ArrayBuffer | Uint8Array, fileName: strin
       if (k === 'RELEASE#') release = str(r.slice(i + 1).find(x => str(x)) ?? '');
     }
     const markRow = rows.findIndex((r, i) => i > depthRow && norm(str(r[0])) === 'PANELMARK');
-    if (markRow < 0) { warnings.push(`${sn}: no se encontró la fila PANEL MARK`); continue; }
+    if (markRow < 0) { warnings.push(T`${sn}: no se encontró la fila PANEL MARK`); continue; }
     const cols = rows[markRow].map(c => norm(str(c)));
     const ci = (k: string) => cols.indexOf(k);
     for (let r = markRow + 1; r < rows.length; r++) {
@@ -97,7 +98,7 @@ export function parseBomWorkbook(data: ArrayBuffer | Uint8Array, fileName: strin
       if (/^(TOTAL|NOTES)/i.test(mark)) break;
       const qty = num(row[ci('QUANTITY')]) ?? 0;
       const A = num(row[ci('A')]); const B = num(row[ci('B')]);
-      if (A === undefined || B === undefined) { warnings.push(`${sn} fila ${r + 1}: panel ${mark} sin A/B`); continue; }
+      if (A === undefined || B === undefined) { warnings.push(T`${sn} fila ${r + 1}: panel ${mark} sin A/B`); continue; }
       const extra: Record<string, string | number> = {};
       cols.forEach((c, i) => {
         if (!c || ['PANELMARK', 'QUANTITY', 'A', 'B', 'C', 'X', 'Y', 'Z', 'Z1', 'GRAIN', 'NOTES', 'OPTIONS'].includes(c)) return;
@@ -121,7 +122,7 @@ export function parseBomWorkbook(data: ArrayBuffer | Uint8Array, fileName: strin
     p.uid = `${p.job}|${p.mark}`;
   }
   const total = panels.reduce((s, p) => s + p.qty, 0);
-  if (h.panelCount && Math.abs(total - h.panelCount) > 0.5) warnings.push(`Panel Count del BOM (${h.panelCount}) ≠ suma de cantidades (${total})`);
+  if (h.panelCount && Math.abs(total - h.panelCount) > 0.5) warnings.push(T`Panel Count del BOM (${h.panelCount}) ≠ suma de cantidades (${total})`);
   return { file: fileName, header: h, panels, warnings };
 }
 

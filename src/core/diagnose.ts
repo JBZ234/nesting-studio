@@ -1,3 +1,4 @@
+import { T, Tn } from '../i18n';
 // Why can't a panel be placed? Detailed, numeric diagnosis for one panel on empty sheets,
 // with a preview position and a sheet-size suggestion.
 
@@ -5,12 +6,12 @@ import type { Action, Cond, Panel, Rule, NestSettings, SheetSize, SheetLayout, P
 import { constraintsFor, PanelConstraints, placedSize, facing, zoneRect, sideViolations, zoneViolated, edgeCode, inflation } from './rules';
 import { tryPlace } from './nest';
 
-const DIR_ES: Record<Dir, string> = { top: 'arriba', bottom: 'abajo', left: 'a la izquierda', right: 'a la derecha' };
+const DIR_ES: Record<Dir, string> = { top: T('en la parte de arriba'), bottom: T('en la parte de abajo'), left: T('a la izquierda'), right: T('a la derecha') };
 const ANCHOR_ES: Record<string, string> = {
-  TH: 'la mitad superior', BH: 'la mitad inferior', LH: 'la mitad izquierda', RH: 'la mitad derecha',
-  T: 'la franja superior', B: 'la franja inferior', L: 'la franja izquierda', R: 'la franja derecha',
-  TL: 'la esquina superior izquierda', TR: 'la esquina superior derecha', BL: 'la esquina inferior izquierda', BR: 'la esquina inferior derecha',
-  TC: 'el centro superior', BC: 'el centro inferior', ML: 'el centro izquierdo', MR: 'el centro derecho', custom: 'la zona definida',
+  TH: T('la mitad superior'), BH: T('la mitad inferior'), LH: T('la mitad izquierda'), RH: T('la mitad derecha'),
+  T: T('la franja superior'), B: T('la franja inferior'), L: T('la franja izquierda'), R: T('la franja derecha'),
+  TL: T('la esquina superior izquierda'), TR: T('la esquina superior derecha'), BL: T('la esquina inferior izquierda'), BR: T('la esquina inferior derecha'),
+  TC: T('el centro superior'), BC: T('el centro inferior'), ML: T('el centro izquierdo'), MR: T('el centro derecho'), custom: T('la zona definida'),
 };
 const f2 = (n: number) => (Math.round(n * 100) / 100).toString();
 
@@ -60,32 +61,32 @@ function explainRule(p: Panel, c: PanelConstraints, ruleId: string, s: NestSetti
         const len = vertical ? h : w;
         if (sr.kind === 'zone' && sr.zone) {
           const z = zoneRect(sr.zone, sz.w, sz.h);
-          const name = ANCHOR_ES[sr.zone.anchor] ?? 'la zona';
+          const name = ANCHOR_ES[sr.zone.anchor] ?? T('la zona');
           if (sr.mode !== 'outside') {
             const a = vertical ? Math.max(U.y0, z.y) : Math.max(U.x0, z.x);
             const b = vertical ? Math.min(U.y1, z.y + z.h) : Math.min(U.x1, z.x + z.w);
             const avail = Math.max(0, b - a);
             if (len > avail + 1e-6) {
-              out.push(`Girado ${rot}°: el lado ${sd} (${code}) queda ${DIR_ES[d]} y mide ${f2(len)}" ${vertical ? 'de alto' : 'de largo'}. Dentro de ${name} de una lámina ${sz.h} × ${sz.w} sólo hay ${f2(avail)}" útiles (de ${f2(a)}" a ${f2(b)}"${vertical && a === U.y0 ? `, contando el margen de ${f2(m.bottom)}"` : ''}). Le faltan ${f2(len - avail)}".`);
+              out.push(T`Girado ${rot}°: el lado ${sd} (${code}) queda ${DIR_ES[d]} y mide ${f2(len)}" ${vertical ? T('de alto') : T('de largo')}. Dentro de ${name} de una lámina ${sz.h} × ${sz.w} sólo hay ${f2(avail)}" útiles (de ${f2(a)}" a ${f2(b)}"${vertical && a === U.y0 ? T`, contando el margen de ${f2(m.bottom)}"` : ''}). Le faltan ${f2(len - avail)}".`);
               if (vertical && (sr.zone.anchor === 'BH' || sr.zone.anchor === 'TH')) {
                 const needH = sr.zone.anchor === 'BH' ? 2 * (len + m.bottom + inf.b) : 2 * (len + m.top + inf.t);
-                out.push(`Para cumplirla girado ${rot}°, la lámina tendría que medir al menos ${f2(Math.ceil(needH * 2) / 2)}" de alto.`);
+                out.push(T`Para cumplirla girado ${rot}°, la lámina tendría que medir al menos ${f2(Math.ceil(needH * 2) / 2)}" de alto.`);
               }
             } else {
-              out.push(`Girado ${rot}°: el lado ${sd} (${code}) mide ${f2(len)}" y cabe en ${name}, pero el panel completo (${f2(w)} × ${f2(h)}) no entra en una posición que cumpla también los márgenes y las demás reglas.`);
+              out.push(T`Girado ${rot}°: el lado ${sd} (${code}) mide ${f2(len)}" y cabe en ${name}, pero el panel completo (${f2(w)} × ${f2(h)}) no entra en una posición que cumpla también los márgenes y las demás reglas.`);
             }
           } else {
-            out.push(`Girado ${rot}°: el lado ${sd} (${code}) queda ${DIR_ES[d]} y no puede entrar en ${name}; con ${f2(w)} × ${f2(h)} no hay posición que lo evite.`);
+            out.push(T`Girado ${rot}°: el lado ${sd} (${code}) queda ${DIR_ES[d]} y no puede entrar en ${name}; con ${f2(w)} × ${f2(h)} no hay posición que lo evite.`);
           }
         } else if (sr.kind === 'notOnBorder') {
-          out.push(`Girado ${rot}°: el lado ${sd} (${code}) queda ${DIR_ES[d]} y debe quedar a más de ${f2(sr.tol)}" del borde; el panel (${f2(w)} × ${f2(h)}) no deja ese espacio en ${sz.h} × ${sz.w}.`);
+          out.push(T`Girado ${rot}°: el lado ${sd} (${code}) queda ${DIR_ES[d]} y debe quedar a más de ${f2(sr.tol)}" del borde; el panel (${f2(w)} × ${f2(h)}) no deja ese espacio en ${sz.h} × ${sz.w}.`);
         }
       }
     }
   }
   for (const z of c.zones.filter(z => z.ruleId === ruleId && z.hard)) {
     const zr = zoneRect(z.zone, sz.w, sz.h);
-    const name = ANCHOR_ES[z.zone.anchor] ?? 'la zona';
+    const name = ANCHOR_ES[z.zone.anchor] ?? T('la zona');
     // area where the panel may sit: inside the zone, or (forbidden band/half) the rest of the sheet
     let allowed: { x0: number; x1: number; y0: number; y1: number } | null = null;
     if (!z.forbid) allowed = { x0: zr.x, x1: zr.x + zr.w, y0: zr.y, y1: zr.y + zr.h };
@@ -101,21 +102,21 @@ function explainRule(p: Panel, c: PanelConstraints, ruleId: string, s: NestSetti
         const { w, h } = placedSize(p.blankW + c.dw, p.blankH + c.dh, rot);
         const k = `${f2(w)}x${f2(h)}`; if (seen.has(k)) continue; seen.add(k);
         const fw = w <= aw + 1e-6, fh = h <= ah + 1e-6;
-        const where = z.forbid ? `fuera de ${name}` : `dentro de ${name}`;
+        const where = z.forbid ? T`fuera de ${name}` : T`dentro de ${name}`;
         if (!fw || !fh) {
-          out.push(`Girado ${rot}°: el panel ocupa ${f2(w)} × ${f2(h)}". ${where[0].toUpperCase() + where.slice(1)} de ${sz.h} × ${sz.w} el espacio útil es ${f2(aw)} × ${f2(ah)}" (de y ${f2(ay0)}" a ${f2(ay1)}"). ${!fh ? `Le sobran ${f2(h - ah)}" de alto` : ''}${!fh && !fw ? ' y ' : ''}${!fw ? `${!fh ? '' : 'Le sobran '}${f2(w - aw)}" de largo` : ''}.`);
+          out.push(T`Girado ${rot}°: el panel ocupa ${f2(w)} × ${f2(h)}". ${where[0].toUpperCase() + where.slice(1)} de ${sz.h} × ${sz.w} el espacio útil es ${f2(aw)} × ${f2(ah)}" (de y ${f2(ay0)}" a ${f2(ay1)}"). ${!fh ? T`Le sobran ${f2(h - ah)}" de alto` : ''}${!fh && !fw ? ' y ' : ''}${!fw ? T`${!fh ? '' : T('Le sobran ')}${f2(w - aw)}" de largo` : ''}.`);
           if (!fh && (z.zone.anchor === 'TH' || z.zone.anchor === 'BH')) {
             const marg = z.zone.anchor === 'BH' ? (z.forbid ? m.top : m.bottom) : (z.forbid ? m.bottom : m.top);
-            out.push(`Para cumplirla girado ${rot}°, la lámina tendría que medir al menos ${f2(Math.ceil(2 * (h + marg) * 2) / 2)}" de alto.`);
+            out.push(T`Para cumplirla girado ${rot}°, la lámina tendría que medir al menos ${f2(Math.ceil(2 * (h + marg) * 2) / 2)}" de alto.`);
           }
-        } else out.push(`Girado ${rot}°: el panel (${f2(w)} × ${f2(h)}") cabe ${where}, pero no en una posición que cumpla también las demás reglas.`);
+        } else out.push(T`Girado ${rot}°: el panel (${f2(w)} × ${f2(h)}") cabe ${where}, pero no en una posición que cumpla también las demás reglas.`);
       }
     } else {
-      out.push(`El panel ${z.forbid ? 'no puede tocar' : 'tiene que estar en'} ${name} y con ${f2(p.blankW)} × ${f2(p.blankH)}" no hay posición que lo cumpla en ${sz.h} × ${sz.w}.`);
+      out.push(T`El panel ${z.forbid ? T('no puede tocar') : T('tiene que estar en')} ${name} y con ${f2(p.blankW)} × ${f2(p.blankH)}" no hay posición que lo cumpla en ${sz.h} × ${sz.w}.`);
     }
   }
   for (const o of c.orient.filter(o => o.ruleId === ruleId && o.hard)) {
-    out.push(`Obliga la orientación «${o.label}» (giros permitidos: ${o.allowed.join('°, ')}°).`);
+    out.push(T`Obliga la orientación «${o.label}» (giros permitidos: ${o.allowed.join('°, ')}°).`);
   }
   // dedupe identical lines (same rotation pairs 0/180 often give the same text)
   return [...new Set(out)];
@@ -132,14 +133,14 @@ function previewOn(p: Panel, c: PanelConstraints, relaxed: PanelConstraints, s: 
   const issues: string[] = []; const hot = new Set<Dir>();
   const r = { x: pl.x, y: pl.y, w: pl.w, h: pl.h };
   const m = s.margins;
-  if (pl.x < m.left - 1e-6 || pl.y < m.bottom - 1e-6 || pl.x + pl.w > sz.w - m.right + 1e-6 || pl.y + pl.h > sz.h - m.top + 1e-6) issues.push('Se sale del área útil (márgenes)');
+  if (pl.x < m.left - 1e-6 || pl.y < m.bottom - 1e-6 || pl.x + pl.w > sz.w - m.right + 1e-6 || pl.y + pl.h > sz.h - m.top + 1e-6) issues.push(T('Se sale del área útil (márgenes)'));
   for (const v of sideViolations(c, r, pl.rot, sz.w, sz.h, p)) if (v.hard) issues.push(`${v.msg} — «${v.ruleName}»`);
-  for (const z of c.zones) if (z.hard && zoneViolated(r, z, sz.w, sz.h)) issues.push(`${z.forbid ? 'Toca la zona prohibida' : 'Sale de la zona obligatoria'} — «${z.ruleName}»`);
-  for (const o of c.orient) if (o.hard && !o.allowed.includes(pl.rot)) issues.push(`Orientación distinta a «${o.label}» — «${o.ruleName}»`);
+  for (const z of c.zones) if (z.hard && zoneViolated(r, z, sz.w, sz.h)) issues.push(`${z.forbid ? T('Toca la zona prohibida') : T('Sale de la zona obligatoria')} — «${z.ruleName}»`);
+  for (const o of c.orient) if (o.hard && !o.allowed.includes(pl.rot)) issues.push(T`Orientación distinta a «${o.label}» — «${o.ruleName}»`);
   // highlight the sides that break a zone rule
   for (const sr of c.sideRules) if (sr.hard && blockerIds.has(sr.ruleId)) for (const sd of sr.sides) hot.add(facing(sd, pl.rot, c.flip));
   const zones = [
-    ...c.sideRules.filter(sr => sr.hard && sr.zone).map(sr => ({ r: zoneRect(sr.zone!, sz.w, sz.h), name: `${sr.mode === 'outside' ? 'Sin' : 'Sólo'} lado ${sr.codes}: ${ANCHOR_ES[sr.zone!.anchor] ?? ''}`, forbid: sr.mode === 'outside' })),
+    ...c.sideRules.filter(sr => sr.hard && sr.zone).map(sr => ({ r: zoneRect(sr.zone!, sz.w, sz.h), name: T`${sr.mode === 'outside' ? T('Sin') : T('Sólo')} lado ${sr.codes}: ${ANCHOR_ES[sr.zone!.anchor] ?? ''}`, forbid: sr.mode === 'outside' })),
     ...c.zones.filter(z => z.hard).map(z => ({ r: zoneRect(z.zone, sz.w, sz.h), name: z.ruleName, forbid: z.forbid })),
   ];
   return { sheet: sz, placement: pl, ok, issues: [...new Set(issues)], zones, hotSides: [...hot] };
@@ -187,7 +188,7 @@ export function diagnosePanel(p: Panel, rules: Rule[], s: NestSettings, catalog:
   const uw = big.w - m.left - m.right, uh = big.h - m.top - m.bottom;
   const bw = p.blankW + c.dw, bh = p.blankH + c.dh;
   const fitsAny = c.rotations.some(r => { const d = placedSize(bw, bh, r); return d.w <= uw + 1e-6 && d.h <= uh + 1e-6; });
-  const tooBig = fitsAny ? null : `El desarrollo mide ${f2(bw)} × ${f2(bh)}" y el área útil de ${big.h} × ${big.w} es ${f2(uw)} × ${f2(uh)}" (con los giros permitidos: ${c.rotations.join('°, ')}°).`;
+  const tooBig = fitsAny ? null : T`El desarrollo mide ${f2(bw)} × ${f2(bh)}" y el área útil de ${big.h} × ${big.w} es ${f2(uw)} × ${f2(uh)}" (con los giros permitidos: ${c.rotations.join('°, ')}°).`;
 
   // which hard rules block it on the largest sheet (drop one at a time, then all together)
   const blockers: Blocker[] = [];
@@ -199,14 +200,14 @@ export function diagnosePanel(p: Panel, rules: Rule[], s: NestSettings, catalog:
       if (fits(p, c2, s, bigSz)) {
         const alt = sideVariant(r);
         const altOk = alt && fits(p, constraintsFor(p, rules.map(x => x.id === r.id ? alt.rule : x), s), s, bigSz);
-        blockers.push({ ruleId: r.id, ruleName: r.name, details: explainRule(p, c, r.id, s, bigSz), alt: altOk ? alt! : undefined }); blockerIds.add(r.id);
+        blockers.push({ ruleId: r.id, ruleName: Tn(r.name), details: explainRule(p, c, r.id, s, bigSz), alt: altOk ? alt! : undefined }); blockerIds.add(r.id);
       }
     }
     if (!blockers.length && !tooBig) {
       // combination: list every hard rule with geometry that applies
       for (const r of matched) {
         const det = explainRule(p, c, r.id, s, bigSz);
-        if (det.length) { blockers.push({ ruleId: r.id, ruleName: r.name, details: det }); blockerIds.add(r.id); }
+        if (det.length) { blockers.push({ ruleId: r.id, ruleName: Tn(r.name), details: det }); blockerIds.add(r.id); }
       }
     }
   }

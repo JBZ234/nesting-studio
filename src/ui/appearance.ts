@@ -1,15 +1,16 @@
+import { T, Tn } from '../i18n';
 import { useSyncExternalStore } from 'react';
 import { storage } from '../platform';
 
 /** Accent colours (light / dark variants live in styles.css under [data-accent]). Orange = default. */
 export const ACCENTS = [
-  { id: 'green', name: 'Verde', light: '#15803d', dark: '#3cbf7a' },
-  { id: 'blue', name: 'Azul', light: '#1d6fd1', dark: '#5b9bff' },
-  { id: 'purple', name: 'Morado', light: '#7046d6', dark: '#a58bff' },
-  { id: 'pink', name: 'Rosado', light: '#c2407e', dark: '#ef8bbd' },
-  { id: 'orange', name: 'Naranja (por defecto)', light: '#d0700c', dark: '#f0962e' },
-  { id: 'red', name: 'Rojo', light: '#c93a2e', dark: '#f06b5e' },
-  { id: 'slate', name: 'Gris azulado', light: '#4f6478', dark: '#93a9bd' },
+  { id: 'green', name: T('Verde'), light: '#15803d', dark: '#3cbf7a' },
+  { id: 'blue', name: T('Azul'), light: '#1d6fd1', dark: '#5b9bff' },
+  { id: 'purple', name: T('Morado'), light: '#7046d6', dark: '#a58bff' },
+  { id: 'pink', name: T('Rosado'), light: '#c2407e', dark: '#ef8bbd' },
+  { id: 'orange', name: T('Naranja (por defecto)'), light: '#d0700c', dark: '#f0962e' },
+  { id: 'red', name: T('Rojo'), light: '#c93a2e', dark: '#f06b5e' },
+  { id: 'slate', name: T('Gris azulado'), light: '#4f6478', dark: '#93a9bd' },
 ] as const;
 export type Theme = 'light' | 'dark' | 'system';
 

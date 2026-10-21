@@ -1,3 +1,4 @@
+import { T, Tn } from '../i18n';
 // Sheet-metal unfolder working on a StepModel.
 // Strategy: pick the biggest planar face (panel face), walk the G1-continuous
 // "skin" across cylindrical bends and unroll each bend at its neutral radius
@@ -128,7 +129,7 @@ export function unfoldModel(model: StepModel, opts: UnfoldOptions = {}): FlatPat
   };
   const warnings: string[] = [...model.warnings];
   const planes = model.faces.filter(f => f.surface.kind === 'plane');
-  if (!planes.length) throw new Error('El STEP no tiene caras planas');
+  if (!planes.length) throw new Error(T('El STEP no tiene caras planas'));
   let base = planes[0]; let bestA = -1;
   for (const f of planes) { const a = planeArea(f); if (a > bestA) { bestA = a; base = f; } }
 
@@ -281,7 +282,7 @@ export function unfoldModel(model: StepModel, opts: UnfoldOptions = {}): FlatPat
   }
   const norm = (p: P2): P2 => [p[0] - x0, p[1] - y0];
   const segments = segs.map(s => ({ ...s, a: norm(s.a), b: norm(s.b) }));
-  if (maps.size < 3) warnings.push('Desdoblado parcial: no se detectaron dobleces tangentes');
+  if (maps.size < 3) warnings.push(T('Desdoblado parcial: no se detectaron dobleces tangentes'));
 
   // per bend: inner radius, angle and direction (for calibration against other unfolders)
   const bendInfo: NonNullable<FlatPattern['bendInfo']> = [];

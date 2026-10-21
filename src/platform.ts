@@ -1,3 +1,4 @@
+import { T, Tn } from './i18n';
 // Abstraction over Tauri (desktop) and plain browser.
 export const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
 
@@ -21,7 +22,7 @@ async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T
 /** Desktop: native folder picker and recursive scan. */
 export async function pickFolderTauri(): Promise<{ folder: string; files: SourceFile[] } | null> {
   const { open } = await import('@tauri-apps/plugin-dialog');
-  const folder = await open({ directory: true, multiple: false, title: 'Carpeta con STEP y BOM' });
+  const folder = await open({ directory: true, multiple: false, title: T('Carpeta con STEP y BOM') });
   if (!folder || Array.isArray(folder)) return null;
   return { folder, files: await scanFolderTauri(folder) };
 }
@@ -70,7 +71,7 @@ export async function saveTextFile(defaultName: string, content: string, filters
 export async function writeTextTo(path: string, content: string) { await invoke('write_text', { path, contents: content }); }
 
 /** Like openTextFile, but also returns where the file was (desktop) or its name (browser). */
-export async function openTextFileWithPath(exts: string[], name = 'Archivo'): Promise<{ text: string; path: string } | null> {
+export async function openTextFileWithPath(exts: string[], name = T('Archivo')): Promise<{ text: string; path: string } | null> {
   if (isTauri) {
     const { open } = await import('@tauri-apps/plugin-dialog');
     const p = await open({ multiple: false, filters: [{ name, extensions: exts }] });
@@ -93,7 +94,7 @@ export async function startupFile(): Promise<string | null> {
 export async function openTextFile(exts: string[]): Promise<string | null> {
   if (isTauri) {
     const { open } = await import('@tauri-apps/plugin-dialog');
-    const p = await open({ multiple: false, filters: [{ name: 'Archivo', extensions: exts }] });
+    const p = await open({ multiple: false, filters: [{ name: T('Archivo'), extensions: exts }] });
     if (!p || Array.isArray(p)) return null;
     return new TextDecoder().decode(new Uint8Array(await invoke<ArrayBuffer>('read_file', { path: p })));
   }

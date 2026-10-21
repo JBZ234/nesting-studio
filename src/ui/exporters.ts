@@ -1,3 +1,4 @@
+import { T, Tn } from '../i18n';
 import type { Layout, Panel, NestSettings, Project } from '../core/types';
 import type { FlatPattern } from '../core/unfold';
 import { groupIdentical } from '../core/nest';
@@ -13,7 +14,7 @@ export function layoutCsv(layout: Layout, panels: Panel[], s: NestSettings): str
   const groups = groupIdentical(layout);
   const layoutNo = new Map<string, number>();
   groups.forEach((g, i) => g.ids.forEach(id => layoutNo.set(id, i + 1)));
-  const head = ['Lamina', 'Layout', 'Repeticiones', 'Lamina_W', 'Lamina_H', 'Marca', 'Job', 'Tipo', 'T', 'B', 'L', 'R', 'A', 'B_dim', 'X', 'Y', 'Ancho', 'Alto', 'Rotacion', 'Espejo', 'Lado_arriba', 'Lado_abajo', 'Desarrollo', 'Bloqueado'];
+  const head = ['Lamina', 'Layout', 'Repeticiones', 'Lamina_W', 'Lamina_H', T('Marca'), 'Job', T('Tipo'), 'T', 'B', 'L', 'R', 'A', 'B_dim', 'X', 'Y', T('Ancho'), T('Alto'), 'Rotacion', T('Espejo'), 'Lado_arriba', 'Lado_abajo', T('Desarrollo'), 'Bloqueado'];
   const rows = [head.join(',')];
   layout.sheets.forEach((sh, i) => {
     const g = groups.find(x => x.ids.includes(sh.id));
@@ -24,7 +25,7 @@ export function layoutCsv(layout: Layout, panels: Panel[], s: NestSettings): str
     }
   });
   rows.push('');
-  rows.push(`# Origen de coordenadas: esquina ${s.originForExport === 'BL' ? 'inferior' : 'superior'} izquierda de la lámina, pulgadas. Rotacion antihoraria: 0 = lado T arriba, 90 = T a la izquierda, 180 = T abajo, 270 = T a la derecha. Espejo = el panel se refleja respecto a una línea horizontal (T y B se intercambian) antes de rotar.`);
+  rows.push(T`# Origen de coordenadas: esquina ${s.originForExport === 'BL' ? T('inferior') : T('superior')} izquierda de la lámina, pulgadas. Rotacion antihoraria: 0 = lado T arriba, 90 = T a la izquierda, 180 = T abajo, 270 = T a la derecha. Espejo = el panel se refleja respecto a una línea horizontal (T y B se intercambian) antes de rotar.`);
   return rows.join('\r\n');
 }
 

@@ -1,3 +1,4 @@
+import { T, Tn, getLang, setLangRaw, Lang } from './i18n';
 import { useSyncExternalStore } from 'react';
 import type { Project, Panel, Layout, SheetLayout, Placement, Rule, SheetDef, NestSettings, Violation, Action } from './core/types';
 import type { BomResult } from './core/bom';
@@ -92,7 +93,7 @@ export function useStore<T>(sel: (s: State) => T): T {
   return useSyncExternalStore(cb => { listeners.add(cb); return () => listeners.delete(cb); }, () => sel(state));
 }
 
-if (migratedRet04.length) setTimeout(() => toast(`Regla actualizada: ${migratedRet04.map(n => `«${n}»`).join(', ')} ahora mira sólo el retorno 04, no el panel completo.`), 1200);
+if (migratedRet04.length) setTimeout(() => toast(T`Regla actualizada: ${migratedRet04.map(n => `«${n}»`).join(', ')} ahora mira sólo el retorno 04, no el panel completo.`), 1200);
 
 // ---------------- rule presets ----------------
 
@@ -109,23 +110,23 @@ export function savePreset(name: string) {
   const entry: RulePreset = { id: ex?.id ?? `p${Date.now().toString(36)}`, name: n, savedAt: Date.now(), ...snapshot() };
   putPresets(ex ? ps.map(p => p === ex ? entry : p) : [...ps, entry]);
   storage.set('ns.activePreset', entry.id);
-  toast(ex ? `Preset «${n}» actualizado` : `Preset «${n}» guardado (${entry.rules.length} reglas)`);
+  toast(ex ? T`Preset «${n}» actualizado` : T`Preset «${n}» guardado (${entry.rules.length} reglas)`);
 }
 export function overwritePreset(id: string) {
   const ps = getPresets(); const p = ps.find(x => x.id === id); if (!p) return;
   putPresets(ps.map(x => x.id === id ? { ...x, savedAt: Date.now(), ...snapshot() } : x));
   storage.set('ns.activePreset', id);
-  toast(`Preset «${p.name}» actualizado con las reglas actuales`);
+  toast(T`Preset «${p.name}» actualizado con las reglas actuales`);
 }
 export function loadPreset(id: string) {
   const ps = getPresets(); const p = ps.find(x => x.id === id); if (!p) return;
   // keep what was there, in case the load was a mistake
-  const backup: RulePreset = { id: 'auto', name: `Antes de cargar «${p.name}»`, savedAt: Date.now(), auto: true, ...snapshot() };
+  const backup: RulePreset = { id: 'auto', name: T`Antes de cargar «${p.name}»`, savedAt: Date.now(), auto: true, ...snapshot() };
   putPresets([...ps.filter(x => x.id !== 'auto'), backup]);
   updateProject(pr => ({ ...pr, rules: structuredClone(p.rules).map(normalizeRule), settings: { ...pr.settings, margins: { ...p.margins }, gap: p.gap } }));
   storage.set('ns.activePreset', id);
   setState({ selRule: p.rules[0]?.id ?? null });
-  toast(`Preset «${p.name}» cargado. Lo anterior quedó en «Antes de cargar…».`);
+  toast(T`Preset «${p.name}» cargado. Lo anterior quedó en «Antes de cargar…».`);
 }
 export function deletePreset(id: string) {
   putPresets(getPresets().filter(x => x.id !== id));
@@ -188,7 +189,7 @@ async function unfoldAll(files: SourceFile[], kFactor: number, onDone: (n: numbe
         onDone(++done); run();
       };
       w.addEventListener('message', handler);
-      w.postMessage({ kind: 'unfold', id, file: f.name, text, kFactor, kTable: state.project.settings.kTable });
+      w.postMessage({ lang: getLang(), kind: 'unfold', id, file: f.name, text, kFactor, kTable: state.project.settings.kTable });
     };
     run();
   })));
@@ -217,26 +218,26 @@ function sessionJson() {
 }
 
 export async function saveSession(asNew = false): Promise<boolean> {
-  if (!state.panels.length && !state.boms.length) { toast('No hay nada que guardar todavía: abre una carpeta primero', 'warn'); return false; }
+  if (!state.panels.length && !state.boms.length) { toast(T('No hay nada que guardar todavía: abre una carpeta primero'), 'warn'); return false; }
   const json = sessionJson();
   try {
     let path = state.sessionPath;
     if (isTauri && path && !asNew) await writeTextTo(path, json);
     else {
       const base = sessionName() ?? (state.sourceLabel.split(/[\\/]/).filter(Boolean).pop() || 'nesting');
-      path = await saveTextFile(`${base.replace(/[\\/:*?"<>|]+/g, '-').trim() || 'nesting'}.nesting`, json, [{ name: 'Trabajo de Nesting Studio', extensions: ['nesting'] }]);
+      path = await saveTextFile(`${base.replace(/[\\/:*?"<>|]+/g, '-').trim() || 'nesting'}.nesting`, json, [{ name: T('Trabajo de Nesting Studio'), extensions: ['nesting'] }]);
       if (!path) return false;
     }
     setState({ sessionPath: path, dirty: false });
-    toast(`Guardado${isTauri ? ` en ${path}` : ''} (${(json.length / 1e6).toFixed(1)} MB)`);
+    toast(T`Guardado${isTauri ? ` en ${path}` : ''} (${(json.length / 1e6).toFixed(1)} MB)`);
     return true;
-  } catch (e: any) { toast(`No se pudo guardar: ${e?.message || e}`, 'err'); return false; }
+  } catch (e: any) { toast(T`No se pudo guardar: ${e?.message || e}`, 'err'); return false; }
 }
 
 export function openSessionText(text: string, path: string) {
   let d: any;
-  try { d = JSON.parse(text); } catch { toast('El archivo no es un trabajo de Nesting Studio', 'err'); return; }
-  if (d?.format !== SESSION_FORMAT) { toast('El archivo no es un trabajo de Nesting Studio', 'err'); return; }
+  try { d = JSON.parse(text); } catch { toast(T('El archivo no es un trabajo de Nesting Studio'), 'err'); return; }
+  if (d?.format !== SESSION_FORMAT) { toast(T('El archivo no es un trabajo de Nesting Studio'), 'err'); return; }
   nestWorker?.terminate(); nestWorker = null; clearTimeout(nestTimer); clearTimeout(watchdog);
   tuneWorker?.terminate(); tuneWorker = null;
   const project = migrateProject(d.project);
@@ -255,13 +256,13 @@ export function openSessionText(text: string, path: string) {
   setState({ cons, layout, selSheet: Math.min(d.selSheet ?? 0, Math.max(0, (layout?.sheets.length ?? 1) - 1)), view: d.view && d.view !== 'sources' ? d.view : (layout ? 'sheets' : 'sources'), sessionPath: path, dirty: false });
   revalidate();
   if (!layout && panels.length) scheduleNest(true);
-  const when = d.savedAt ? new Date(d.savedAt).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-  toast(`Trabajo abierto${when ? ` (guardado ${when})` : ''}: ${layout?.sheets.length ?? 0} láminas, ${panels.length} marcas`);
+  const when = d.savedAt ? new Date(d.savedAt).toLocaleString((getLang() === 'en' ? 'en-US' : 'es-CO'), { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  toast(T`Trabajo abierto${when ? T` (guardado ${when})` : ''}: ${layout?.sheets.length ?? 0} láminas, ${panels.length} marcas`);
 }
 
 export async function openSession() {
-  if (state.dirty && state.panels.length && !window.confirm('Hay cambios sin guardar. ¿Abrir otro trabajo de todas formas?')) return;
-  const f = await openTextFileWithPath(['nesting'], 'Trabajo de Nesting Studio');
+  if (state.dirty && state.panels.length && !window.confirm(T('Hay cambios sin guardar. ¿Abrir otro trabajo de todas formas?'))) return;
+  const f = await openTextFileWithPath(['nesting'], T('Trabajo de Nesting Studio'));
   if (f) openSessionText(f.text, f.path);
 }
 
@@ -273,22 +274,22 @@ export async function loadSources(files: SourceFile[], label: string, folder: st
   const bomFiles = files.filter(f => f.kind === 'bom');
   const stepFiles = files.filter(f => f.kind === 'step');
   const total = bomFiles.length + stepFiles.length;
-  if (!total) { toast('No se encontraron archivos .step/.stp ni BOM .xls/.xlsx en esa carpeta', 'warn'); return; }
-  setState({ loading: { done: 0, total, msg: 'Leyendo BOM…' }, sourceLabel: label, folder });
+  if (!total) { toast(T('No se encontraron archivos .step/.stp ni BOM .xls/.xlsx en esa carpeta'), 'warn'); return; }
+  setState({ loading: { done: 0, total, msg: T('Leyendo BOM…') }, sourceLabel: label, folder });
   if (folder) storage.set('ns.folder', folder);
   const boms: BomResult[] = [];
   let done = 0;
   for (const f of bomFiles) {
     try { boms.push(parseBomWorkbook(await f.readBytes(), f.name)); }
-    catch (e: any) { boms.push({ file: f.name, header: { job: '', jobName: '', release: '', material: '', alloy: '', thickness: '', finish: '', finishCode: '', panelCount: 0, date: '' }, panels: [], warnings: [`No se pudo leer: ${e?.message || e}`] }); }
+    catch (e: any) { boms.push({ file: f.name, header: { job: '', jobName: '', release: '', material: '', alloy: '', thickness: '', finish: '', finishCode: '', panelCount: 0, date: '' }, panels: [], warnings: [T`No se pudo leer: ${e?.message || e}`] }); }
     setState({ loading: { done: ++done, total, msg: `BOM ${f.name}` } });
   }
-  setState({ loading: { done, total, msg: `Desdoblando ${stepFiles.length} STEP…` } });
-  const steps = await unfoldAll(stepFiles, state.project.settings.kFactor, n => setState({ loading: { done: done + n, total, msg: `Desdoblando STEP ${n}/${stepFiles.length}` } }));
+  setState({ loading: { done, total, msg: T`Desdoblando ${stepFiles.length} STEP…` } });
+  const steps = await unfoldAll(stepFiles, state.project.settings.kFactor, n => setState({ loading: { done: done + n, total, msg: T`Desdoblando STEP ${n}/${stepFiles.length}` } }));
   setState({ boms, steps, stepSources: stepFiles, loading: null, layout: null, layoutEdited: false, undo: [], redo: [], jobFilter: [], sessionPath: null, dirty: true, pendingSetup: true });
   rebuildPanels();
   const np = state.panels.reduce((a, p) => a + p.qty, 0);
-  toast(`${boms.length} BOM, ${steps.filter(s => s.flat).length}/${steps.length} STEP desdoblados, ${np} paneles`);
+  toast(T`${boms.length} BOM, ${steps.filter(s => s.flat).length}/${steps.length} STEP desdoblados, ${np} paneles`);
   setState({ view: 'sheets' });
 }
 
@@ -299,10 +300,10 @@ export function loadPrepared(boms: BomResult[], steps: StepEntry[], label: strin
 }
 
 export async function reUnfold() {
-  if (!state.stepSources.length) { toast('Para recalcular con otro factor K hay que volver a abrir la carpeta', 'warn'); return; }
+  if (!state.stepSources.length) { toast(T('Para recalcular con otro factor K hay que volver a abrir la carpeta'), 'warn'); return; }
   const files = state.stepSources;
-  setState({ loading: { done: 0, total: files.length, msg: 'Desdoblando de nuevo…' } });
-  const steps = await unfoldAll(files, state.project.settings.kFactor, n => setState({ loading: { done: n, total: files.length, msg: `Desdoblando STEP ${n}/${files.length}` } }));
+  setState({ loading: { done: 0, total: files.length, msg: T('Desdoblando de nuevo…') } });
+  const steps = await unfoldAll(files, state.project.settings.kFactor, n => setState({ loading: { done: n, total: files.length, msg: T`Desdoblando STEP ${n}/${files.length}` } }));
   setState({ steps, loading: null });
   rebuildPanels();
 }
@@ -364,14 +365,14 @@ function runTune(input: any, layout: Layout) {
     if (m.kind === 'tuneDone') { setState({ tune: { running: false, result: m.result, key } }); tuneWorker?.terminate(); tuneWorker = null; }
   };
   tuneWorker.onerror = () => { setState({ tune: null }); tuneWorker?.terminate(); tuneWorker = null; };
-  tuneWorker.postMessage({ kind: 'tune', id, input, base: summarize(layout) });
+  tuneWorker.postMessage({ lang: getLang(), kind: 'tune', id, input, base: summarize(layout) });
 }
 export function applyTune() {
   const r = state.tune?.result; if (!r) return;
   setState({ tune: null });
   updateProject(p => ({ ...p, settings: { ...p.settings, ...r.patch } }));
   scheduleNest(true);
-  toast('Valores de optimización cambiados. Recalculando…');
+  toast(T('Valores de optimización cambiados. Recalculando…'));
 }
 export function dismissTune() { if (state.tune) storage.set('ns.tuneDismissed', state.tune.key); setState({ tune: null }); }
 
@@ -400,18 +401,18 @@ export function runNest(opts: { keepLocked?: boolean } = { keepLocked: true }) {
       if (m.layout.unplaced.some((u: any) => u.kind === 'stock')) runSuggest(); else setState({ suggestions: null, suggesting: false });
       clearTimeout(watchdog);
       runTune({ panels: ps, rules: state.project.rules, sheets: state.project.sheets, settings: state.project.settings, seed, frozen }, m.layout);
-    } else if (m.kind === 'error') { setState({ nesting: null, nestError: m.error }); toast(`Error en el nesting: ${m.error}`, 'err'); }
+    } else if (m.kind === 'error') { setState({ nesting: null, nestError: m.error }); toast(T`Error en el nesting: ${m.error}`, 'err'); }
   };
-  nestWorker.onerror = (e: ErrorEvent) => { setState({ nesting: null, nestError: e.message || 'El motor de nesting no pudo iniciar' }); toast(`Error en el motor de nesting: ${e.message || 'no pudo iniciar'}`, 'err'); console.error('worker error', e.message, e.filename, e.lineno); };
-  nestWorker.postMessage({ kind: 'nest', id, input: { panels: ps, rules: state.project.rules, sheets: state.project.sheets, settings: state.project.settings, seed, frozen } });
+  nestWorker.onerror = (e: ErrorEvent) => { setState({ nesting: null, nestError: e.message || T('El motor de nesting no pudo iniciar') }); toast(T`Error en el motor de nesting: ${e.message || T('no pudo iniciar')}`, 'err'); console.error('worker error', e.message, e.filename, e.lineno); };
+  nestWorker.postMessage({ lang: getLang(), kind: 'nest', id, input: { panels: ps, rules: state.project.rules, sheets: state.project.sheets, settings: state.project.settings, seed, frozen } });
   // safety net: the engine has time limits, but never leave the app "calculating" forever
   clearTimeout(watchdog);
   const limit = Math.max(state.project.settings.timeMs * 6, 45000) + 60000;
   watchdog = setTimeout(() => {
     if (id !== nestId || !nestWorker) return;
     nestWorker.terminate(); nestWorker = null;
-    setState({ nesting: null, nestError: 'El cálculo superó el tiempo máximo' });
-    toast(`El cálculo pasó de ${Math.round(limit / 1000)} s y se detuvo. Baja el tiempo de búsqueda o revisa las reglas.`, 'err');
+    setState({ nesting: null, nestError: T('El cálculo superó el tiempo máximo') });
+    toast(T`El cálculo pasó de ${Math.round(limit / 1000)} s y se detuvo. Baja el tiempo de búsqueda o revisa las reglas.`, 'err');
   }, limit);
 }
 
@@ -426,7 +427,7 @@ export function runSuggest() {
     setState({ suggestions: ev.data.suggestions, suggesting: false });
     sugWorker?.terminate(); sugWorker = null;
   };
-  sugWorker.postMessage({ kind: 'suggest', id, catalog: state.project.sheetCatalog, input: { panels: activePanels(), rules: state.project.rules, sheets: state.project.sheets, settings: state.project.settings, frozen: state.layout?.sheets.filter(sh => sh.locked) ?? [] } });
+  sugWorker.postMessage({ lang: getLang(), kind: 'suggest', id, catalog: state.project.sheetCatalog, input: { panels: activePanels(), rules: state.project.rules, sheets: state.project.sheets, settings: state.project.settings, frozen: state.layout?.sheets.filter(sh => sh.locked) ?? [] } });
 }
 
 /** Add `n` more sheets of a size to this nesting (creates the size if it was not selected). */
@@ -503,7 +504,7 @@ export function unplaceMany(sheetIdx: number, iids: string[]) {
   if (!state.layout) return;
   const l = cloneLayout(state.layout);
   const sh = l.sheets[sheetIdx];
-  for (const p of sh.placements) if (iids.includes(p.iid)) l.unplaced.push(p.trial ? { iid: p.iid, uid: p.uid, reason: p.trial.reason, kind: p.trial.kind } : { iid: p.iid, uid: p.uid, reason: 'Retirado manualmente' });
+  for (const p of sh.placements) if (iids.includes(p.iid)) l.unplaced.push(p.trial ? { iid: p.iid, uid: p.uid, reason: p.trial.reason, kind: p.trial.kind } : { iid: p.iid, uid: p.uid, reason: T('Retirado manualmente') });
   sh.placements = sh.placements.filter(p => !iids.includes(p.iid));
   commitLayout(l);
   setState({ selIid: null, selMulti: [] });
@@ -542,17 +543,17 @@ function setOrient(uid: string, patch: { flip?: boolean | null; fixedRot?: Rot |
 export function flipMark(uid: string) {
   const c = state.cons.get(uid); if (!c) return;
   setOrient(uid, { flip: !c.flip });
-  toast(`${state.panels.find(p => p.uid === uid)?.mark ?? ''}: ${!c.flip ? 'en espejo' : 'sin espejo'} (se mantiene al optimizar)`);
+  toast(T`${state.panels.find(p => p.uid === uid)?.mark ?? ''}: ${!c.flip ? T('en espejo') : T('sin espejo')} (se mantiene al optimizar)`);
 }
 /** Forget manual rotation and mirror of a mark (back to the default and the optimizer's choice). */
-export function releaseOrient(uid: string) { setOrient(uid, { flip: null, fixedRot: null }); toast('Giro y espejo vuelven a lo automático'); }
+export function releaseOrient(uid: string) { setOrient(uid, { flip: null, fixedRot: null }); toast(T('Giro y espejo vuelven a lo automático')); }
 export function releaseAllOrient() {
   updateProject(pr => {
     const o: typeof pr.overrides = {};
     for (const [u, v] of Object.entries(pr.overrides)) { const { flip, fixedRot, ...rest } = v as any; void flip; void fixedRot; if (Object.keys(rest).length) o[u] = rest; }
     return { ...pr, overrides: o };
   }, { rebuild: true, noNest: true });
-  toast('Se quitaron los giros y espejos puestos a mano');
+  toast(T('Se quitaron los giros y espejos puestos a mano'));
 }
 
 /** How many things are held: fixed pieces, frozen sheets, rotations / mirrors set by hand. */
@@ -581,8 +582,8 @@ export function unlockAll(alsoFlips = false) {
   }
   setState({ selIid: null, selMulti: [] });
   runNest({ keepLocked: false });
-  const parts = [c.pieces && `${c.pieces} piezas fijadas`, c.sheets && `${c.sheets} láminas bloqueadas`, c.rots && `${c.rots} giros a mano`, alsoFlips && c.flips && `${c.flips} espejos a mano`].filter(Boolean);
-  toast(parts.length ? `Se soltó todo (${parts.join(', ')}). Optimizando desde cero…` : 'No había nada bloqueado. Optimizando desde cero…');
+  const parts = [c.pieces && T`${c.pieces} piezas fijadas`, c.sheets && T`${c.sheets} láminas bloqueadas`, c.rots && T`${c.rots} giros a mano`, alsoFlips && c.flips && T`${c.flips} espejos a mano`].filter(Boolean);
+  toast(parts.length ? T`Se soltó todo (${parts.join(', ')}). Optimizando desde cero…` : T('No había nada bloqueado. Optimizando desde cero…'));
 }
 
 export function toggleLock(sheetIdx: number, iid: string) {
@@ -599,7 +600,7 @@ export function freezeSheets(ids: string[], on: boolean) {
   const l = cloneLayout(state.layout);
   for (const sh of l.sheets) if (ids.includes(sh.id)) sh.locked = on || undefined;
   commitLayout(l, false);
-  toast(on ? `${ids.length === 1 ? 'Lámina bloqueada' : `${ids.length} láminas bloqueadas`}: se mantienen al optimizar` : 'Lámina desbloqueada');
+  toast(on ? T`${ids.length === 1 ? T('Lámina bloqueada') : T`${ids.length} láminas bloqueadas`}: se mantienen al optimizar` : T('Lámina desbloqueada'));
 }
 
 export function lockSheet(sheetIdx: number, lock: boolean) {
@@ -615,7 +616,7 @@ export function unplace(sheetIdx: number, iid: string) {
   const sh = l.sheets[sheetIdx];
   const p = sh.placements.find(q => q.iid === iid); if (!p) return;
   sh.placements = sh.placements.filter(q => q.iid !== iid);
-  l.unplaced.push(p.trial ? { iid, uid: p.uid, reason: p.trial.reason, kind: p.trial.kind } : { iid, uid: p.uid, reason: 'Retirado manualmente' });
+  l.unplaced.push(p.trial ? { iid, uid: p.uid, reason: p.trial.reason, kind: p.trial.kind } : { iid, uid: p.uid, reason: T('Retirado manualmente') });
   commitLayout(l);
   setState({ selIid: null });
 }
@@ -631,7 +632,7 @@ export function placeOnSheet(targetIdx: number, iid: string): boolean {
   const panel = state.panels.find(p => p.uid === uidOf); const c = uidOf ? state.cons.get(uidOf) : undefined;
   if (!panel || !c || !target) return false;
   const pl = tryPlace(target, panel, c, state.project.settings, iid, u => state.cons.get(u), iid);
-  if (!pl) { toast(`No hay espacio legal para ${panel.mark} en la lámina ${targetIdx + 1}`, 'warn'); return false; }
+  if (!pl) { toast(T`No hay espacio legal para ${panel.mark} en la lámina ${targetIdx + 1}`, 'warn'); return false; }
   pl.locked = true;
   if (fromIdx >= 0) l.sheets[fromIdx].placements = l.sheets[fromIdx].placements.filter(p => p.iid !== iid);
   else l.unplaced = l.unplaced.filter(u => u.iid !== iid);
@@ -667,7 +668,7 @@ export function previewOnSheet(targetIdx: number, iid: string): boolean {
   target.placements = [...target.placements, pl];
   commitLayout(l);
   setState({ selSheet: targetIdx, selIid: iid });
-  toast(`${panel.mark} en prueba en la lámina ${targetIdx + 1}: arrástrala para ver cómo queda. Está marcada como error.`, 'warn');
+  toast(T`${panel.mark} en prueba en la lámina ${targetIdx + 1}: arrástrala para ver cómo queda. Está marcada como error.`, 'warn');
   return true;
 }
 
@@ -676,7 +677,7 @@ export function reorganizeCurrent(idx: number) {
   if (!state.layout) return;
   const l = cloneLayout(state.layout);
   const sh = l.sheets[idx]; if (!sh) return;
-  if (sh.locked) { toast('La lámina está bloqueada: desbloquéala para reacomodarla', 'warn'); return; }
+  if (sh.locked) { toast(T('La lámina está bloqueada: desbloquéala para reacomodarla'), 'warn'); return; }
   const s = state.project.settings;
   const consOf = (iid: string) => state.cons.get(iid.slice(0, iid.lastIndexOf('#')));
   const before = cutScore(sh.placements, sh.w, sh.h, s);
@@ -684,9 +685,9 @@ export function reorganizeCurrent(idx: number) {
   alignInternalCuts(sh, consOf, s);
   const sunk = sinkConstrained(sh, consOf, s);
   const after = cutScore(sh.placements, sh.w, sh.h, s);
-  if (!moved && !sunk && after <= before + 0.5) { toast('Esta lámina ya tiene los cortes más compartidos que encontré'); return; }
+  if (!moved && !sunk && after <= before + 0.5) { toast(T('Esta lámina ya tiene los cortes más compartidos que encontré')); return; }
   commitLayout(l);
-  toast('Lámina reacomodada para compartir más cortes (Ctrl+Z para deshacer)');
+  toast(T('Lámina reacomodada para compartir más cortes (Ctrl+Z para deshacer)'));
 }
 
 export function addEmptySheet(def: SheetDef) {
@@ -702,7 +703,7 @@ export function deleteSheet(idx: number) {
   if (!state.layout) return;
   const l = cloneLayout(state.layout);
   const sh = l.sheets[idx]; if (!sh) return;
-  for (const p of sh.placements) l.unplaced.push({ iid: p.iid, uid: p.uid, reason: 'Lámina eliminada' });
+  for (const p of sh.placements) l.unplaced.push({ iid: p.iid, uid: p.uid, reason: T('Lámina eliminada') });
   l.sheets.splice(idx, 1);
   commitLayout(l);
   setState({ selSheet: Math.max(0, Math.min(idx, l.sheets.length - 1)) });
@@ -711,3 +712,35 @@ export function deleteSheet(idx: number) {
 export function setAuto(v: boolean) { storage.set('ns.auto', v); setState({ autoNest: v }); if (v) scheduleNest(true); }
 
 export type { Placement, SheetLayout };
+
+// ---------------- language ----------------
+
+const STASH_DB = 'ns-lang-stash';
+function idb(): Promise<IDBDatabase> {
+  return new Promise((res, rej) => { const r = indexedDB.open(STASH_DB, 1); r.onupgradeneeded = () => r.result.createObjectStore('s'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+}
+async function idbPut(v: unknown) { const db = await idb(); await new Promise<void>((res, rej) => { const tx = db.transaction('s', 'readwrite'); tx.objectStore('s').put(v, 'stash'); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); }); }
+async function idbTake(): Promise<any> {
+  const db = await idb();
+  return new Promise((res) => { const tx = db.transaction('s', 'readwrite'); const st = tx.objectStore('s'); const g = st.get('stash'); g.onsuccess = () => { st.delete('stash'); res(g.result); }; g.onerror = () => res(null); });
+}
+export let switchingLang = false;
+/** Switch language: the work in progress is kept (stashed, page reloaded in the new language, restored). */
+export async function setLanguage(l: Lang) {
+  if (l === getLang()) return;
+  try { localStorage.setItem('ns.lang', JSON.stringify(l)); } catch { /* ignore */ }
+  setLangRaw(l); switchingLang = true;
+  try {
+    if (state.panels.length) await idbPut({ text: sessionJson(), path: state.sessionPath, dirty: state.dirty, view: state.view, selSheet: state.selSheet });
+  } catch { /* if it can't be kept, the page still reloads */ }
+  location.reload();
+}
+/** After a language switch: bring back the work as it was. */
+export async function restoreAfterLanguage() {
+  try {
+    const st = await idbTake(); if (!st?.text) return false;
+    openSessionText(st.text, st.path ?? '');
+    setState({ sessionPath: st.path ?? null, dirty: !!st.dirty, view: st.view ?? state.view, selSheet: st.selSheet ?? 0, toast: null });
+    return true;
+  } catch { return false; }
+}

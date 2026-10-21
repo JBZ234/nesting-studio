@@ -3,6 +3,7 @@ import { nest, NestInput, suggestSheets } from './nest';
 import type { SheetSize } from './types';
 import { unfoldStepText } from './unfold';
 import { tuneSettings, TuneSummary } from './tune';
+import { setLangRaw } from '../i18n';
 
 type Msg =
   | { kind: 'nest'; id: number; input: NestInput }
@@ -12,6 +13,7 @@ type Msg =
 
 self.onmessage = (ev: MessageEvent<Msg>) => {
   const m = ev.data;
+  if ((m as any).lang) setLangRaw((m as any).lang);   // messages and reasons in the app's language
   if (m.kind === 'nest') {
     try {
       const layout = nest(m.input, p => (self as any).postMessage({ kind: 'progress', id: m.id, progress: p }));

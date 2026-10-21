@@ -1,3 +1,4 @@
+import { T, Tn } from '../i18n';
 import React, { useMemo, useState } from 'react';
 import { useStore, setSheets, updateProject, addSheetStock, applyTune, dismissTune } from '../store';
 import { makeSheet, sheetName } from '../core/defaults';
@@ -38,30 +39,30 @@ export function SheetPicker({ compact = false }: { compact?: boolean }) {
         return (
           <div key={d.id} className="sp-row">
             <b className="num">{sheetName(d)}</b>
-            <label className="sp-qty" title="Cantidad disponible de esta lámina (vacío = sin límite)">
-              <input id={`stk-${d.id}`} type="number" min={0} placeholder="máx ∞" aria-label={`Cantidad máxima de ${sheetName(d)}`} value={d.stock ?? ''}
+            <label className="sp-qty" title={T("Cantidad disponible de esta lámina (vacío = sin límite)")}>
+              <input id={`stk-${d.id}`} type="number" min={0} placeholder={T("máx ∞")} aria-label={T`Cantidad máxima de ${sheetName(d)}`} value={d.stock ?? ''}
                 onChange={e => setSheets(ss => ss.map(x => x.id === d.id ? { ...x, stock: e.target.value === '' ? null : Math.max(0, Math.round(+e.target.value)) } : x))} />
             </label>
-            <span className={`pill num ${over ? 'warn' : ''}`} title="Láminas usadas en el resultado actual">{u}{d.stock !== null ? `/${d.stock}` : ''}</span>
-            <button className="iconbtn" title="Quitar de este nesting" onClick={() => setSheets(ss => ss.filter(x => x.id !== d.id))}><I.x /></button>
+            <span className={`pill num ${over ? 'warn' : ''}`} title={T("Láminas usadas en el resultado actual")}>{u}{d.stock !== null ? `/${d.stock}` : ''}</span>
+            <button className="iconbtn" title={T("Quitar de este nesting")} onClick={() => setSheets(ss => ss.filter(x => x.id !== d.id))}><I.x /></button>
           </div>
         );
       })}
-      {!selected.length && <span className="viol soft">Elige al menos un tamaño de lámina.</span>}
+      {!selected.length && <span className="viol soft">{T("Elige al menos un tamaño de lámina.")}</span>}
       {!custom ? (
-        <select id={compact ? 'addsheet-c' : 'addsheet'} value="" aria-label="Agregar tamaño de lámina"
+        <select id={compact ? 'addsheet-c' : 'addsheet'} value="" aria-label={T("Agregar tamaño de lámina")}
           onChange={e => { const v = e.target.value; if (v === 'custom') setCustom(true); else if (v) { const [h, w] = v.split('x').map(Number); add({ w, h }); } }}>
-          <option value="">+ Agregar tamaño de lámina…</option>
+          <option value="">{T("+ Agregar tamaño de lámina…")}</option>
           {available.map(c => <option key={`${c.h}x${c.w}`} value={`${c.h}x${c.w}`}>{sheetName(c)}</option>)}
-          <option value="custom">Otro tamaño…</option>
+          <option value="custom">{T("Otro tamaño…")}</option>
         </select>
       ) : (
         <div className="row" style={{ gap: 4 }}>
-          <input type="number" value={ch} onChange={e => setCh(+e.target.value)} style={{ width: 60 }} aria-label="Alto" />
+          <input type="number" value={ch} onChange={e => setCh(+e.target.value)} style={{ width: 60 }} aria-label={T("Alto")} />
           <span>×</span>
-          <input type="number" value={cw} onChange={e => setCw(+e.target.value)} style={{ width: 66 }} aria-label="Largo" />
-          <button className="btn sm primary" onClick={addCustom}>Agregar</button>
-          <button className="btn sm ghost" onClick={() => setCustom(false)}>Cancelar</button>
+          <input type="number" value={cw} onChange={e => setCw(+e.target.value)} style={{ width: 66 }} aria-label={T("Largo")} />
+          <button className="btn sm primary" onClick={addCustom}>{T("Agregar")}</button>
+          <button className="btn sm ghost" onClick={() => setCustom(false)}>{T("Cancelar")}</button>
         </div>
       )}
     </div>
@@ -84,19 +85,19 @@ export function StockBanner() {
     <div className="stock-banner" role="status">
       <I.warn />
       <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
-        <b>Faltan láminas: {missing} piezas sin ubicar por el límite de cantidad.</b>
-        {suggesting ? <span className="row muted" style={{ gap: 6 }}><span className="spin" /> Calculando cuántas láminas agregar…</span>
+        <b>{T("Faltan láminas:")} {missing} {T("piezas sin ubicar por el límite de cantidad.")}</b>
+        {suggesting ? <span className="row muted" style={{ gap: 6 }}><span className="spin" /> {T("Calculando cuántas láminas agregar…")}</span>
           : cur ? (
             <div className="row" style={{ gap: 6 }}>
-              <span>Sugerencia: agregar</span>
-              <input id="sug-n" type="number" min={1} value={qty} onChange={e => setN(e.target.value === '' ? '' : Math.max(1, +e.target.value))} style={{ width: 56 }} aria-label="Cantidad a agregar" />
-              <span>láminas de</span>
-              <select id="sug-size" value={cur.id} onChange={e => { setPick(e.target.value); setN(''); }} aria-label="Tamaño a agregar">
-                {list.map(s => <option key={s.id} value={s.id}>{sheetName(s)} (+{s.add}{s.stillMissing ? `, faltan ${s.stillMissing}` : ''})</option>)}
+              <span>{T("Sugerencia: agregar")}</span>
+              <input id="sug-n" type="number" min={1} value={qty} onChange={e => setN(e.target.value === '' ? '' : Math.max(1, +e.target.value))} style={{ width: 56 }} aria-label={T("Cantidad a agregar")} />
+              <span>{T("láminas de")}</span>
+              <select id="sug-size" value={cur.id} onChange={e => { setPick(e.target.value); setN(''); }} aria-label={T("Tamaño a agregar")}>
+                {list.map(s => <option key={s.id} value={s.id}>{sheetName(s)} (+{s.add}{s.stillMissing ? T`, faltan ${s.stillMissing}` : ''})</option>)}
               </select>
-              <button className="btn sm primary" onClick={() => { addSheetStock({ w: cur.w, h: cur.h }, qty); setN(''); setPick(''); }}>Agregar y optimizar</button>
+              <button className="btn sm primary" onClick={() => { addSheetStock({ w: cur.w, h: cur.h }, qty); setN(''); setPick(''); }}>{T("Agregar y optimizar")}</button>
             </div>
-          ) : <span className="muted">Ningún tamaño del catálogo alcanza: revisa las reglas o agrega un tamaño mayor.</span>}
+          ) : <span className="muted">{T("Ningún tamaño del catálogo alcanza: revisa las reglas o agrega un tamaño mayor.")}</span>}
       </div>
     </div>
   );
@@ -110,40 +111,40 @@ export function OptimizePanel() {
   const tune = useStore(st => st.tune);
   return (
     <div className="opt-panel">
-      {tune?.running && <span className="row muted" style={{ gap: 6, fontSize: 12.5 }}><span className="spin" /> Probando otros valores{tune.step ? ` (${tune.step})` : ''}…</span>}
-      {tune && !tune.running && !tune.result && <span className="muted" style={{ fontSize: 12.5 }}>✓ Con estas reglas, los valores actuales ya son los mejores que encontré.</span>}
+      {tune?.running && <span className="row muted" style={{ gap: 6, fontSize: 12.5 }}><span className="spin" /> {T("Probando otros valores")}{tune.step ? ` (${tune.step})` : ''}…</span>}
+      {tune && !tune.running && !tune.result && <span className="muted" style={{ fontSize: 12.5 }}>{T("✓ Con estas reglas, los valores actuales ya son los mejores que encontré.")}</span>}
       <label className="row" style={{ gap: 8, fontSize: 13 }}>
         <span className="switch"><input id="o-rep" type="checkbox" checked={s.repeatSheets} onChange={e => set({ repeatSheets: e.target.checked })} /><span /></span>
-        <span>Repetir láminas iguales</span>
+        <span>{T("Repetir láminas iguales")}</span>
       </label>
       {s.repeatSheets && <>
         <label className="opt-slider">
-          <span>Prioridad de repetir <b className="num">{s.repeatWeight}</b></span>
+          <span>{T("Prioridad de repetir")} <b className="num">{s.repeatWeight}</b></span>
           <input id="o-rw" type="range" min={0} max={100} step={5} value={s.repeatWeight} onChange={e => set({ repeatWeight: +e.target.value })} />
-          <small className="muted">{s.repeatWeight === 0 ? 'Sólo repite si no cuesta material' : `Acepta hasta ${loss}% menos aprovechamiento por repetir una lámina`}</small>
+          <small className="muted">{s.repeatWeight === 0 ? T('Sólo repite si no cuesta material') : T`Acepta hasta ${loss}% menos aprovechamiento por repetir una lámina`}</small>
         </label>
         <label className="opt-slider">
-          <span>Aprovechamiento mínimo para repetir <b className="num">{s.repeatMinUtil}%</b></span>
+          <span>{T("Aprovechamiento mínimo para repetir")} <b className="num">{s.repeatMinUtil}%</b></span>
           <input id="o-rmu" type="range" min={0} max={95} step={5} value={s.repeatMinUtil} onChange={e => set({ repeatMinUtil: +e.target.value })} />
-          <small className="muted">Una lámina más vacía que esto no se repite</small>
+          <small className="muted">{T("Una lámina más vacía que esto no se repite")}</small>
         </label>
       </>}
       <label className="opt-slider">
-        <span>Láminas cuadriculadas <b className="num">{s.gridWeight ? s.gridWeight : 'no'}</b></span>
+        <span>{T("Láminas cuadriculadas")} <b className="num">{s.gridWeight ? s.gridWeight : 'no'}</b></span>
         <input id="o-grid" type="range" min={0} max={100} step={5} value={s.gridWeight ?? 0} onChange={e => set({ gridWeight: +e.target.value })} />
-        <small className="muted">{s.gridWeight ? `Prefiere filas de paneles del mismo alto (cortes limpios); acepta hasta ${Math.round((s.gridWeight ?? 0) * 0.15)}% menos aprovechamiento por lámina para lograrlo` : 'Sin preferencia por láminas cuadriculadas'}</small>
+        <small className="muted">{s.gridWeight ? T`Prefiere filas de paneles del mismo alto (cortes limpios); acepta hasta ${Math.round((s.gridWeight ?? 0) * 0.15)}% menos aprovechamiento por lámina para lograrlo` : T('Sin preferencia por láminas cuadriculadas')}</small>
       </label>
       {(s.gridWeight ?? 0) > 0 && <label className="opt-slider">
-        <span>Diferencia de alto en una fila <b className="num">{(s.gridTol ?? 0.1).toFixed(2)}"</b></span>
+        <span>{T("Diferencia de alto en una fila")} <b className="num">{(s.gridTol ?? 0.1).toFixed(2)}"</b></span>
         <input id="o-gtol" type="range" min={0} max={1} step={0.05} value={s.gridTol ?? 0.1} onChange={e => set({ gridTol: +e.target.value })} />
-        <small className="muted">Paneles cuyo alto difiere hasta esto cuentan como la misma fila</small>
+        <small className="muted">{T("Paneles cuyo alto difiere hasta esto cuentan como la misma fila")}</small>
       </label>}
       <label className="opt-slider">
-        <span>Filas del mismo alto <b className="num">{s.rowAlign || 'no'}</b></span>
+        <span>{T("Filas del mismo alto")} <b className="num">{s.rowAlign || 'no'}</b></span>
         <input id="o-ra" type="range" min={0} max={100} step={5} value={s.rowAlign} onChange={e => set({ rowAlign: +e.target.value })} />
       </label>
       <label className="opt-slider">
-        <span>Tiempo de búsqueda <b className="num">{(s.timeMs / 1000).toFixed(0)} s</b></span>
+        <span>{T("Tiempo de búsqueda")} <b className="num">{(s.timeMs / 1000).toFixed(0)} s</b></span>
         <input id="o-t" type="range" min={1000} max={20000} step={1000} value={s.timeMs} onChange={e => set({ timeMs: +e.target.value })} />
       </label>
     </div>
@@ -157,20 +158,20 @@ export function TuneBanner() {
   if (!r) return null;
   const dS = r.base.sheets - r.best.sheets, dU = r.base.unplaced - r.best.unplaced;
   const gains: string[] = [];
-  if (dU > 0) gains.push(`${dU} ${dU === 1 ? 'pieza más ubicada' : 'piezas más ubicadas'}`);
-  if (dS > 0) gains.push(`${dS} ${dS === 1 ? 'lámina menos' : 'láminas menos'}`);
-  gains.push(`aprovechamiento ${(r.base.util * 100).toFixed(1)}% → ${(r.best.util * 100).toFixed(1)}%`);
-  if (r.best.layouts !== r.base.layouts) gains.push(`${r.best.layouts} layouts distintos (antes ${r.base.layouts})`);
+  if (dU > 0) gains.push(`${dU} ${dU === 1 ? T('pieza más ubicada') : T('piezas más ubicadas')}`);
+  if (dS > 0) gains.push(`${dS} ${dS === 1 ? T('lámina menos') : T('láminas menos')}`);
+  gains.push(T`aprovechamiento ${(r.base.util * 100).toFixed(1)}% → ${(r.best.util * 100).toFixed(1)}%`);
+  if (r.best.layouts !== r.base.layouts) gains.push(T`${r.best.layouts} layouts distintos (antes ${r.base.layouts})`);
   return (
     <div className="tune-banner" role="status">
       <I.auto />
       <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
-        <b>Con otros valores en Optimización sale mejor: {gains.join(' · ')}.</b>
+        <b>{T("Con otros valores en Optimización sale mejor:")} {gains.join(' · ')}.</b>
         <span className="muted">{r.changes.map(c => `${c.label}: ${c.from} → ${c.to}`).join(' · ')}</span>
       </div>
       <div className="row" style={{ gap: 6, flex: 'none' }}>
-        <button className="btn sm primary" onClick={applyTune}>Cambiar a valores óptimos</button>
-        <button className="btn sm ghost" onClick={dismissTune}>Ignorar</button>
+        <button className="btn sm primary" onClick={applyTune}>{T("Cambiar a valores óptimos")}</button>
+        <button className="btn sm ghost" onClick={dismissTune}>{T("Ignorar")}</button>
       </div>
     </div>
   );

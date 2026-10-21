@@ -7,10 +7,12 @@ applyAppearance();
 createRoot(document.getElementById('root')!).render(<App />);
 
 import { startupFolder, scanFolderTauri, startupFile, readTextAt, isTauri } from './platform';
-import { loadSources, openSessionText, getState } from './store';
-startupFile().then(async file => {
+import { loadSources, openSessionText, getState, restoreAfterLanguage, switchingLang } from './store';
+restoreAfterLanguage().then(async restored => {
+  if (restored) return;
+  const file = await startupFile();
   if (file) { openSessionText(await readTextAt(file), file); return; }
   const f = await startupFolder(); if (f) loadSources(await scanFolderTauri(f), f, f);
 });
 // browser: warn before leaving with unsaved work
-if (!isTauri) window.addEventListener('beforeunload', e => { const s = getState(); if (s.dirty && s.panels.length) { e.preventDefault(); e.returnValue = ''; } });
+if (!isTauri) window.addEventListener('beforeunload', e => { const s = getState(); if (s.dirty && s.panels.length && !switchingLang) { e.preventDefault(); e.returnValue = ''; } });
