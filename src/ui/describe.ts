@@ -34,6 +34,7 @@ export const ACTION_TYPES: { type: Action['type']; label: string; help: string; 
   { type: 'edgeFacing', label: T('Lado hacia una dirección'), help: T('Gira el panel para que un lado (p. ej. 04) quede arriba, abajo, izquierda o derecha.'), group: T('Lados del panel') },
   { type: 'edgeNotOnBorder', label: T('Lado no puede ir en el borde'), help: T('Ese lado no puede quedar contra el filo de la lámina.'), group: T('Lados del panel') },
   { type: 'edgeZone', label: T('Retorno de un lado dentro / fuera de una zona'), help: T('La franja del retorno con ese código (del doblez al corte) tiene que quedar (o no) en la zona. El resto del panel sí puede pasar.'), group: T('Lados del panel') },
+  { type: 'staggerRows', label: T('Filas escalonadas'), help: T('Los cortes verticales de una fila no siguen en la fila de arriba ni en la de abajo: quedan desfasados, como ladrillos, y las filas no comparten esas líneas de corte.'), group: T('Ubicación') },
   { type: 'edgeClearance', label: T('Lado separado X mm'), help: T('Ese lado queda al menos a X mm del borde de la lámina y de los lados de otros paneles que tenga enfrente (caras paralelas).'), group: T('Lados del panel') },
   { type: 'edgeNoCommonLine', label: T('Lado sin common line'), help: T('Ese lado no comparte línea de corte con ciertos lados del panel vecino (o con ninguno): se deja separación.'), group: T('Lados del panel') },
   { type: 'gravity', label: T('Pegar hacia un borde'), help: T('El panel busca quedar pegado arriba, abajo, izquierda o derecha.'), group: T('Ubicación') },
@@ -105,6 +106,7 @@ export function describeAction(a: Action): string {
     case 'edgeNoCommonLine': return (a.withCodes ?? '').trim()
       ? T`${cap(describeEdge(a.edge))} sin common line con lados ${a.withCodes} de otro panel (separación ${fmt(a.clearance)})`
       : T`${cap(describeEdge(a.edge))} sin common line (separación ${fmt(a.clearance)})`;
+    case 'staggerRows': return T`Filas escalonadas: los cortes verticales desfasados al menos ${fmt(a.offset)} de los de la fila de arriba y de abajo${st(a.strength, a.weight)}`;
     case 'edgeClearance': return T`${cap(describeEdge(a.edge))} a ${a.mm} mm como mínimo ${[a.border && T('del borde de la lámina'), a.panels && T('de los lados de otros paneles que tenga enfrente')].filter(Boolean).join(' y ') || T('(no aplica: marca borde o paneles)')}`;
     case 'gravity': return T`Pegado ${dirl(a.dir)} (fuerza ${a.weight})`;
   }
@@ -127,6 +129,7 @@ export function newAction(type: Action['type']): Action {
     case 'edgeNotOnBorder': return { type, edge: { codes: '', sides: [] }, tol: 3, strength: 'hard', weight: 10 };
     case 'edgeZone': return { type, edge: { codes: '', sides: [] }, zone: { anchor: 'BH', w: 0, h: 0, test: 'inside' }, mode: 'inside', strength: 'hard', weight: 10 };
     case 'edgeNoCommonLine': return { type, edge: { codes: '', sides: [] }, clearance: 0.5 };
+    case 'staggerRows': return { type, offset: 2, strength: 'soft', weight: 60 };
     case 'edgeClearance': return { type, edge: { codes: '', sides: [] }, mm: 10, border: true, panels: true };
     case 'gravity': return { type, dir: 'bottom', weight: 60 };
   }

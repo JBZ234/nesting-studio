@@ -982,7 +982,15 @@ const EN: Record<string, string> = {
  "aprovechamiento · todos": "utilization · all",
  "aprovechamiento · {}": "utilization · {}",
  "{} releases cargados: {} paneles. Elige arriba qué release ver o todos juntos.": "{} releases loaded: {} panels. Pick at the top which release to view, or all of them together.",
- "Release {} quitado": "Release {} removed"
+ "Release {} quitado": "Release {} removed",
+ "Filas escalonadas": "Staggered rows",
+ "Los cortes verticales de una fila no siguen en la fila de arriba ni en la de abajo: quedan desfasados, como ladrillos, y las filas no comparten esas líneas de corte.": "The vertical cuts of a row don't continue into the row above or below: they are offset, like bricks, so the rows don't share those cut lines.",
+ "Filas escalonadas: los cortes verticales desfasados al menos {} de los de la fila de arriba y de abajo{}": "Staggered rows: vertical cuts offset at least {} from those of the rows above and below{}",
+ "Desfase mínimo entre los cortes de una fila y los de la fila vecina": "Minimum offset between a row's cuts and the next row's",
+ "Después de optimizar se corre cada fila (si sobra espacio a un lado) o se cambia el orden de sus paneles para que los cortes verticales no queden en línea con los de la fila de arriba o de abajo. Los cortes contra el borde de la lámina no cuentan. Como preferencia, si no se puede escalonar sin romper otra regla, se deja como está y se marca.": "After optimizing, each row is slid (if there's room at one side) or its panels are reordered so its vertical cuts don't line up with those of the rows above or below. Cuts against the sheet edge don't count. As a preference, when it can't be staggered without breaking another rule, it's left as is and flagged.",
+ "Corte vertical alineado con la {} (desfase {}\", mínimo {}\")": "Vertical cut lined up with the {} (offset {}\", minimum {}\")",
+ "fila de arriba": "row above",
+ "fila de abajo": "row below"
 };
 const NAMES: Record<string, string> = {
  "Los lados 02 no van en los bordes de la lámina": "Sides 02 don't go on the sheet edges",

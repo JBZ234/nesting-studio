@@ -70,6 +70,7 @@ export type Action =
   | { type: 'edgeFacing'; edge: EdgeSel; dir: Dir; strength: Strength; weight: number }
   | { type: 'edgeNotOnBorder'; edge: EdgeSel; tol: number; strength: Strength; weight: number }
   | { type: 'edgeZone'; edge: EdgeSel; zone: ZoneDef; mode: 'inside' | 'outside'; part?: 'return' | 'edge'; strength: Strength; weight: number }
+  | { type: 'staggerRows'; offset: number; strength: Strength; weight: number }   // vertical cuts offset from the rows above / below (no continuous cut)
   | { type: 'edgeClearance'; edge: EdgeSel; mm: number; border: boolean; panels: boolean }   // side at least `mm` from the sheet edge / from facing sides of other panels
   | { type: 'edgeNoCommonLine'; edge: EdgeSel; clearance: number; withCodes?: string } // withCodes empty = with any neighbour
   | { type: 'gravity'; dir: Dir; weight: number };

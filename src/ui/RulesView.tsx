@@ -355,6 +355,10 @@ function ActionEditor({ a, onChange, onDelete }: { a: Action; onChange: (a: Acti
         <span className="muted" style={{ fontSize: 12.5 }}>{(a.withCodes ?? '').trim()
           ? <>{T("Sólo se separa cuando el lado")} {a.edge.codes || '…'} {T("queda frente a un lado")} {a.withCodes} {T("de otro panel. Con cualquier otro lado sí comparte common line.")}</>
           : <>{T("Sin lados del vecino: ese lado nunca comparte línea de corte. Los demás lados comparten common line si la separación general en “Reglas de la lámina” es 0.")}</>}</span></>; break;
+    case 'staggerRows':
+      body = <><label className="row" style={{ fontSize: 13.5 }}>{T("Desfase mínimo entre los cortes de una fila y los de la fila vecina")} <input type="number" step={0.25} min={0.25} value={a.offset} onChange={e => onChange({ ...a, offset: Math.max(0.25, +e.target.value) })} style={{ width: 80 }} /> {T("pulg.")}</label>
+        <Strength a={a} onChange={p => onChange({ ...a, ...p })} />
+        <span className="muted" style={{ fontSize: 12.5 }}>{T("Después de optimizar se corre cada fila (si sobra espacio a un lado) o se cambia el orden de sus paneles para que los cortes verticales no queden en línea con los de la fila de arriba o de abajo. Los cortes contra el borde de la lámina no cuentan. Como preferencia, si no se puede escalonar sin romper otra regla, se deja como está y se marca.")}</span></>; break;
     case 'edgeClearance':
       body = <><EdgeSelEditor e={a.edge} onChange={e => onChange({ ...a, edge: e })} />
         <label className="row" style={{ fontSize: 13.5 }}>{T("Separación mínima")} <input type="number" step={0.5} min={0} value={a.mm} onChange={e => onChange({ ...a, mm: Math.max(0, +e.target.value) })} style={{ width: 80 }} /> mm <span className="muted">({(a.mm / 25.4).toFixed(3)}")</span></label>

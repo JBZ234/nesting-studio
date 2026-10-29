@@ -5,7 +5,7 @@ import type { BomResult } from './core/bom';
 import { parseBomWorkbook } from './core/bom';
 import type { FlatPattern } from './core/unfold';
 import { buildPanels, StepEntry, releaseCodes } from './core/panels';
-import { buildItems, tryPlace, NestProgress, SheetSuggestion, reorganizeSheet, alignInternalCuts, sinkConstrained, cutScore } from './core/nest';
+import { buildItems, tryPlace, NestProgress, SheetSuggestion, reorganizeSheet, alignInternalCuts, sinkConstrained, staggerSheet, cutScore } from './core/nest';
 import { makeSheet } from './core/defaults';
 import type { Rot, SheetSize } from './core/types';
 import type { PanelConstraints } from './core/rules';
@@ -809,8 +809,9 @@ export function reorganizeCurrent(idx: number) {
   const moved = reorganizeSheet(sh, consOf, s, true);
   alignInternalCuts(sh, consOf, s);
   const sunk = sinkConstrained(sh, consOf, s);
+  const staggered = staggerSheet(sh, consOf, s);
   const after = cutScore(sh.placements, sh.w, sh.h, s);
-  if (!moved && !sunk && after <= before + 0.5) { toast(T('Esta lámina ya tiene los cortes más compartidos que encontré')); return; }
+  if (!moved && !sunk && !staggered && after <= before + 0.5) { toast(T('Esta lámina ya tiene los cortes más compartidos que encontré')); return; }
   commitLayout(l);
   toast(T('Lámina reacomodada para compartir más cortes (Ctrl+Z para deshacer)'));
 }

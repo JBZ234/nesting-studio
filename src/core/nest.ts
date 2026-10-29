@@ -5,7 +5,7 @@ import { T, Tn } from '../i18n';
 // over item orderings and placement heuristics.
 
 import type { Panel, Rule, NestSettings, SheetDef, Layout, SheetLayout, Placement, Rot, SheetSize } from './types';
-import { pairClearance, constraintsFor, PanelConstraints, Rect, zoneRect, zoneViolated, orientPenalty, intersects, inside, inflation, placedSize, sideViolations, gravityTerm, Infl } from './rules';
+import { pairClearance, constraintsFor, PanelConstraints, Rect, zoneRect, zoneViolated, orientPenalty, intersects, inside, inflation, placedSize, sideViolations, gravityTerm, Infl, staggerConflicts } from './rules';
 import { partitionKey } from './panels';
 
 export interface NestInput {
@@ -434,6 +434,16 @@ function signature(sh: SheetLayout) {
   return sh.sheetId + ':' + sh.placements.map(p => `${p.uid}@${p.x.toFixed(2)},${p.y.toFixed(2)},${p.rot}`).sort().join('|');
 }
 
+/** "Filas escalonadas": while choosing between candidate nestings, aligned cuts between rows cost like a broken preference (×10 if the rule is required) */
+function staggerPenalty(pls: Placement[], byIid: Map<string, Item>, def: SheetDef, s: NestSettings) {
+  if (!pls.some(p => byIid.get(p.iid)?.c.stagger)) return 0;
+  const cu = new Map(pls.map(p => [p.uid, byIid.get(p.iid)?.c]));
+  return staggerConflicts(pls, u => cu.get(u), def.w, def.h, s).reduce((a, k) => a + (k.rule.hard ? 10 : 1) * k.rule.weight, 0);
+}
+
+/** set by nest() while its first pass runs: reports progress as sheets are filled */
+let progressTick: ((sheets: number) => void) | null = null;
+
 function solve(groups: Map<string, Item[]>, heur: Heur, input: NestInput, seeds: SheetLayout[], byIid: Map<string, Item>): Solution {
   const s = input.settings;
   const W = input.weights ?? { soft: 50, uniqueLayout: 400, compact: 100 };
@@ -447,8 +457,9 @@ function solve(groups: Map<string, Item[]>, heur: Heur, input: NestInput, seeds:
   const commit = (def: SheetDef, fr: FillResult, part: string) => {
     const pls: Placement[] = fr.packer.used.map(u => ({ iid: u.it.iid, uid: u.it.uid, x: +u.pr.x.toFixed(4), y: +u.pr.y.toFixed(4), w: u.pr.w, h: u.pr.h, rot: u.rot }));
     sheets.push({ id: `S${++n}`, sheetId: def.id, w: def.w, h: def.h, partition: part, placements: pls });
+    progressTick?.(sheets.length);
     if (stock.has(def.id)) stock.set(def.id, stock.get(def.id)! - 1);
-    soft += fr.soft; sheetArea += def.w * def.h;
+    soft += fr.soft + staggerPenalty(pls, byIid, def, s); sheetArea += def.w * def.h;
     usedArea += fr.packer.used.reduce((a, u) => a + u.it.area, 0);
   };
 
@@ -656,13 +667,24 @@ export function nest(input: NestInput, onProgress?: (p: NestProgress) => void, s
     return limited && !!best && best.unplaced.length > 0 && el < hardStop;
   };
   const report = () => onProgress?.({ iteration: iter, bestCost: best?.cost ?? 0, sheets: best?.sheets.length ?? 0, elapsed: Date.now() - t0, unplaced: best?.unplaced.length ?? 0, extended: Date.now() - t0 > input.settings.timeMs });
-  for (let oi = 0; oi < orders.length; oi++) for (const h of HEURS) {
+  // big jobs (thousands of pieces) take seconds per pass: report each pass, and while the first one
+  // is running report the sheets it has filled so far, so the screen never sits at "0 combinations"
+  let lastTick = 0;
+  progressTick = (n: number) => {
+    if (best || !onProgress) return;
+    const now = Date.now(); if (now - lastTick < 600) return; lastTick = now;
+    onProgress({ iteration: 0, bestCost: 0, sheets: n, elapsed: now - t0, unplaced: 0 });
+  };
+  first: for (let oi = 0; oi < orders.length; oi++) for (const h of HEURS) {
     const ordered = new Map([...groups].map(([k, g]) => [k, orders[oi](g)] as [string, Item[]]));
     const sol = solve(ordered, h, input, seeds, byIid); iter++;
     if (!best || sol.cost < best.cost) { best = sol; bestOrderIdx = oi; bestHeur = h; }
-    if (Date.now() - t0 > input.settings.timeMs * 0.6 && iter >= 4) break;
+    report();
+    const el = Date.now() - t0;
+    // stop trying start orders when the time is (mostly) used; slow passes may stop after 1 or 2
+    if ((el > input.settings.timeMs * 0.6 && iter >= 4) || (el > input.settings.timeMs && iter >= 2) || el > input.settings.timeMs * 1.5) break first;
   }
-  report();
+  progressTick = null;
   // local search on per-group orderings: swap blocks of identical panels
   const rnd = mulberry32(12345);
   let curOrders = new Map<string, Item[]>();
@@ -721,6 +743,7 @@ export function nest(input: NestInput, onProgress?: (p: NestProgress) => void, s
       if (input.settings.reorganize !== false) reorganizeSheet(sh, consOf, input.settings);
       alignInternalCuts(sh, consOf, input.settings);
       if ((input.settings as any).sinkLow !== false && sinkConstrained(sh, consOf, input.settings)) alignInternalCuts(sh, consOf, input.settings);
+      staggerSheet(sh, consOf, input.settings);
       done.set(sig, sh.placements);
     }
   }
@@ -996,6 +1019,107 @@ export function sinkConstrained(sh: SheetLayout, consOf: (iid: string) => PanelC
   return changed;
 }
 
+
+// ---------------- staggered rows ----------------
+
+/** Every hard rule still holds for this arrangement of a sheet (margins, zones, sides, overlaps, pair clearances). */
+function sheetHardValid(arr: Placement[], consOf: (iid: string) => PanelConstraints | undefined, W: number, H: number, s: NestSettings) {
+  const U = realArea(W, H, s);
+  for (let i = 0; i < arr.length; i++) {
+    const p = arr[i]; const c = consOf(p.iid);
+    if (!inside(p, U)) return false;
+    if (c) {
+      if (c.zones.some(z => z.hard && zoneViolated(p, z, W, H))) return false;
+      if (sideViolations(c, p, p.rot, W, H).some(v => v.hard)) return false;
+    }
+    const a = inflation(c, p.rot, s);
+    const ra = { x: p.x - a.l + 1e-4, y: p.y - a.b + 1e-4, w: p.w + a.l + a.r - 2e-4, h: p.h + a.b + a.t - 2e-4 };
+    for (let j = i + 1; j < arr.length; j++) {
+      const q = arr[j]; const cq = consOf(q.iid); const b = inflation(cq, q.rot, s);
+      if (intersects(ra, { x: q.x - b.l + 1e-4, y: q.y - b.b + 1e-4, w: q.w + b.l + b.r - 2e-4, h: q.h + b.b + b.t - 2e-4 })) return false;
+      if (pairClearance(c, p, p.rot, cq, q, q.rot).need) return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Rule "Filas escalonadas": the vertical cuts of a row must not continue into the row above or
+ * below. Row by row (bands with a straight horizontal cut between them), try sliding the row into
+ * free space, mirroring it, or changing the order of its panels, and keep whatever leaves fewest
+ * aligned cuts without breaking a hard rule or adding soft penalties.
+ */
+export function staggerSheet(sh: SheetLayout, consOf: (iid: string) => PanelConstraints | undefined, s: NestSettings): boolean {
+  const W = sh.w, H = sh.h, U = realArea(W, H, s);
+  if (sh.placements.length < 2 || sh.placements.some(p => p.trial || p.locked)) return false;
+  const byUid = new Map(sh.placements.map(p => [p.uid, consOf(p.iid)]));
+  if (![...byUid.values()].some(c => c?.stagger)) return false;
+  const conflicts = (arr: Placement[]) => staggerConflicts(arr, u => byUid.get(u), W, H, s).length;
+  const gravOf = (arr: Placement[]) => arr.reduce((a, pl) => { const c = consOf(pl.iid); return a + (c ? gravityTerm(c, pl, W, H) : 0); }, 0);
+  const score = (arr: Placement[]) => conflicts(arr) * 1000 + softOf(arr, consOf, W, H) * 10 + gravOf(arr);
+  let cur = sh.placements.map(p => ({ ...p }));
+  let curScore = score(cur);
+  if (curScore < 1000) return false;
+  const E = 0.02;
+  const bandsOf = (arr: Placement[]) => {
+    const sorted = [...arr].sort((a, b) => a.y - b.y);
+    const out: { ids: Set<string>; lo: number; hi: number }[] = [];
+    for (const p of sorted) {
+      const last = out[out.length - 1];
+      if (last && p.y < last.hi - E) { last.ids.add(p.iid); last.hi = Math.max(last.hi, p.y + p.h); }
+      else out.push({ ids: new Set([p.iid]), lo: p.y, hi: p.y + p.h });
+    }
+    return out;
+  };
+  let changed = false;
+  for (let pass = 0; pass < 2; pass++) {
+    for (const band of bandsOf(cur)) {
+      const mine = cur.filter(p => band.ids.has(p.iid));
+      if (!mine.some(p => byUid.get(p.uid)?.stagger)) continue;
+      const others = cur.filter(p => !band.ids.has(p.iid));
+      const x0 = Math.min(...mine.map(p => p.x)), x1 = Math.max(...mine.map(p => p.x + p.w));
+      // arrangements of the row: as is, mirrored, and (one-line rows) other panel orders keeping the gaps
+      const variants: Placement[][] = [mine, mine.map(p => ({ ...p, x: +(x0 + x1 - p.x - p.w).toFixed(4) }))];
+      const oneLine = mine.every(p => Math.abs(p.y - mine[0].y) < E) || mine.every(p => Math.abs(p.y + p.h - mine[0].y - mine[0].h) < E);
+      if (oneLine && mine.length > 1 && mine.length <= 8) {
+        const seq = [...mine].sort((a, b) => a.x - b.x);
+        const gaps = seq.slice(1).map((p, i) => p.x - (seq[i].x + seq[i].w));
+        const pack = (order: Placement[]) => { let x = x0; return order.map((p, i) => { const q = { ...p, x: +x.toFixed(4) }; x += p.w + (gaps[i] ?? 0); return q; }); };
+        const orders: Placement[][] = [];
+        for (let k = 1; k < seq.length; k++) orders.push([...seq.slice(k), ...seq.slice(0, k)]);
+        for (let i = 0; i + 1 < seq.length; i++) { const o = [...seq]; [o[i], o[i + 1]] = [o[i + 1], o[i]]; orders.push(o); }
+        for (const o of orders) variants.push(pack(o));
+      }
+      let best = { arr: cur, sc: curScore };
+      for (const v of variants) {
+        const vx0 = Math.min(...v.map(p => p.x)), vx1 = Math.max(...v.map(p => p.x + p.w));
+        const slackL = vx0 - U.x, slackR = U.x + U.w - vx1;
+        const shifts = new Set<number>([0]);
+        if (slackR > E) shifts.add(slackR);
+        if (slackL > E) shifts.add(-slackL);
+        const near = others.filter(q => Math.abs(q.y - band.hi) < s.gap + 0.1 || Math.abs(q.y + q.h - band.lo) < s.gap + 0.1);
+        const minOff = Math.max(...mine.map(p => byUid.get(p.uid)?.stagger?.min ?? 0), ...near.map(p => byUid.get(p.uid)?.stagger?.min ?? 0));
+        for (const q of near) for (const eq of [q.x, q.x + q.w]) for (const p of v) for (const ep of [p.x, p.x + p.w])
+          for (const d of [eq - ep + minOff + 0.01, eq - ep - minOff - 0.01]) if (d <= slackR + 1e-6 && d >= -slackL - 1e-6) shifts.add(+d.toFixed(4));
+        for (const d of shifts) {
+          const moved = v.map(p => ({ ...p, x: +(p.x + d).toFixed(4) }));
+          const arr = [...others, ...moved];
+          const sc = score(arr);
+          if (sc < best.sc - 1e-6 && sheetHardValid(arr, consOf, W, H, s)) best = { arr, sc };
+        }
+      }
+      if (best.arr !== cur) { cur = best.arr; curScore = best.sc; changed = true; }
+      if (curScore < 1000) break;
+    }
+    if (curScore < 1000) break;
+  }
+  if (changed) {
+    const order = new Map(sh.placements.map((p, i) => [p.iid, i]));
+    sh.placements = cur.sort((a, b) => order.get(a.iid)! - order.get(b.iid)!);
+  }
+  return changed;
+}
+
 // ---------------- internal cut alignment ----------------
 
 /**
@@ -1068,7 +1192,8 @@ export function alignInternalCuts(sh: SheetLayout, consOf: (iid: string) => Pane
       for (let j = 0; j < pls.length; j++) {
         if (j === i) continue;
         const q = pls[j];
-        if (g !== 'left' && g !== 'right') for (const x of [q.x, q.x + q.w - pl.w]) cands.push({ ...cur, x });
+        const stg = !!(c?.stagger || consOf(q.iid)?.stagger);   // staggered rows: never line up cuts with the row above / below
+        if (g !== 'left' && g !== 'right' && !stg) for (const x of [q.x, q.x + q.w - pl.w]) cands.push({ ...cur, x });
         if (g !== 'top' && g !== 'bottom') for (const y of [q.y, q.y + q.h - pl.h]) cands.push({ ...cur, y });
       }
       for (const r of cands) {

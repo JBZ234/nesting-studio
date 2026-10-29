@@ -143,6 +143,7 @@ export interface PanelConstraints {
   flip: boolean;                  // panel mirrored about a horizontal line (T↔B)
   fixedRot: Rot | null;           // rotation fixed by hand
   pairRules: PairRule[];          // "this side can't share a cut line with a neighbour side coded …"
+  stagger: { min: number; hard: boolean; weight: number; ruleId: string; ruleName: string } | null;   // rows staggered: no vertical cut continuing into the next row
 }
 export interface PairRule { sides: Side[]; withCodes: string[]; clearance: number; ruleId: string; ruleName: string; codes: string; mm?: number }
 
@@ -163,7 +164,7 @@ export function constraintsFor(p: Panel, rules: Rule[], s: NestSettings): PanelC
     sheetIds: null, separate: [], maxPerSheet: [], dw: 0, dh: 0,
     returns: { T: 0, B: 0, L: 0, R: 0, ...(p.returns ?? {}) },
     edges: { T: p.edgeT ?? '', B: p.edgeB ?? '', L: p.edgeL ?? '', R: p.edgeR ?? '' }, pairRules: [],
-    flip: p.flip ?? (s.mirrorDefault ?? false), fixedRot: p.fixedRot ?? null,
+    flip: p.flip ?? (s.mirrorDefault ?? false), fixedRot: p.fixedRot ?? null, stagger: null,
   };
   for (const r of rules) {
     if (!r.enabled) continue;
@@ -235,6 +236,9 @@ function applyAction(c: PanelConstraints, a: Action, r: Rule, p: Panel) {
     }
     case 'gravity':
       c.gravity = { dir: a.dir, weight: a.weight, ruleName: Tn(r.name) };
+      break;
+    case 'staggerRows':
+      c.stagger = { min: Math.max(0.05, a.offset), hard: a.strength === 'hard', weight: a.weight, ruleId: r.id, ruleName: Tn(r.name) };
       break;
   }
 }
@@ -392,6 +396,35 @@ const ROT_LABEL = (r: Rot) => `${r}°`;
 
 // ---------- validation of a (possibly hand-edited) layout ----------
 
+/**
+ * Staggered rows: pairs of panels one on top of the other (touching rows) whose vertical cut lines
+ * are closer than the rule asks, i.e. a cut that would run on from one row into the next.
+ * Edges on the sheet border don't count. `consOf` takes a panel uid.
+ */
+export function staggerConflicts(pls: { iid: string; uid: string; x: number; y: number; w: number; h: number }[], consOf: (uid: string) => PanelConstraints | undefined, W: number, H: number, s: NestSettings) {
+  const out: { a: string; b: string; off: number; rule: NonNullable<PanelConstraints['stagger']> }[] = [];
+  const m = s.margins, E = 0.02;
+  const border = (x: number) => Math.abs(x - m.left) < E || Math.abs(x - (W - m.right)) < E || x < m.left + E || x > W - m.right - E;
+  const touch = s.gap + 0.06;
+  for (const a of pls) for (const b of pls) {
+    if (a === b) continue;
+    const dy = b.y - (a.y + a.h);
+    if (dy < -E || dy > touch) continue;                       // b sits right on top of a
+    if (Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) < -E) continue;
+    const ca = consOf(a.uid)?.stagger, cb = consOf(b.uid)?.stagger;
+    const rule = ca && cb ? (ca.min >= cb.min ? ca : cb) : ca ?? cb;
+    if (!rule) continue;
+    let worst: number | null = null;
+    for (const ea of [a.x, a.x + a.w]) for (const eb of [b.x, b.x + b.w]) {
+      if (border(ea) || border(eb)) continue;
+      const off = Math.abs(ea - eb);
+      if (off < rule.min - 1e-6 && (worst === null || off < worst)) worst = off;
+    }
+    if (worst !== null) out.push({ a: a.iid, b: b.iid, off: worst, rule });
+  }
+  return out;
+}
+
 export function validateLayout(layout: Layout, panels: Map<string, Panel>, cons: Map<string, PanelConstraints>, s: NestSettings, sheetDefs: SheetDef[]): Map<string, Violation[]> {
   const out = new Map<string, Violation[]>();
   const add = (v: Violation) => { const a = out.get(v.iid) || []; if (!a.some(x => x.ruleId === v.ruleId && x.msg === v.msg)) a.push(v); out.set(v.iid, a); };
@@ -438,6 +471,11 @@ export function validateLayout(layout: Layout, panels: Map<string, Panel>, cons:
     for (const pl of sh.placements) {
       const c = cons.get(pl.uid); if (!c) continue;
       for (const mx of c.maxPerSheet) if ((counts.get(mx.ruleId) || 0) > mx.value) add({ iid: pl.iid, ruleId: mx.ruleId, ruleName: mx.ruleName, hard: true, msg: T`Máximo ${mx.value} por lámina`, penalty: 0 });
+    }
+    // staggered rows: a vertical cut must not continue into the row above / below
+    for (const k of staggerConflicts(sh.placements, uid => cons.get(uid), sh.w, sh.h, s)) {
+      const st = k.rule;
+      for (const iid of [k.a, k.b]) add({ iid, ruleId: st.ruleId, ruleName: st.ruleName, hard: st.hard, msg: T`Corte vertical alineado con la ${iid === k.a ? T('fila de arriba') : T('fila de abajo')} (desfase ${k.off.toFixed(2)}", mínimo ${st.min}")`, penalty: st.hard ? 0 : st.weight });
     }
     // partition mixing
     const keys = new Set(sh.placements.map(pl => { const p = panels.get(pl.uid); const c = cons.get(pl.uid); return p && c ? partitionKey(p, [...s.partitionBy, ...c.separate], s) : ''; }));
