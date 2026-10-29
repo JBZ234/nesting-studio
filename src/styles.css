@@ -461,7 +461,7 @@ details > summary { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .ap .opt, .ap-live { transition: none; } }
 
 /* ---------- several releases ---------- */
-.rel-picker { display: flex; align-items: center; gap: 12px; padding: 2px 4px 2px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--raise); }
+.rel-picker { display: flex; align-items: center; gap: 12px; padding: 0 0 0 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--raise); }
 .rel-select { display: flex; flex-direction: column; gap: 0; }
 .rel-select .label { font-size: 10px; }
 .rel-select select { border: 0; background: transparent; font-weight: 700; font-size: 14px; padding: 0 18px 0 0; height: 22px; color: var(--fg); cursor: pointer; }
@@ -470,3 +470,39 @@ details > summary { cursor: pointer; }
 .rel-util b.busy { opacity: .45; }
 .rel-util span { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
 .rel-tag { display: inline-block; font-family: var(--f-mono); font-size: 11.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
+
+/* ---- waste report (release picker) ---- */
+.wr { position: relative; align-self: stretch; display: flex; border-left: 1px solid var(--line); }
+.wr-mini { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 3px 8px; border: 0; background: transparent; border-radius: 0 var(--r) var(--r) 0; cursor: pointer; color: var(--muted); }
+.wr-mini:hover, .wr-mini.on { background: var(--accent-soft); }
+.wr-spark { display: flex; align-items: flex-end; gap: 2px; height: 22px; }
+.wr-spark i { display: block; width: 5px; border-radius: 1.5px 1.5px 0 0; background: color-mix(in srgb, var(--muted) 55%, transparent); transition: height .5s cubic-bezier(.2,.8,.2,1); }
+.wr-spark i.all { background: var(--accent); margin-left: 3px; }
+.wr-spark i.cur { box-shadow: 0 0 0 1px var(--fg); }
+.wr-spark i.miss { background: transparent; outline: 1px dashed var(--muted); outline-offset: -1px; animation: wr-pulse 1.4s ease-in-out infinite; }
+.wr-cap { font-size: 9.5px; text-transform: uppercase; letter-spacing: .05em; line-height: 1; }
+@keyframes wr-pulse { 50% { opacity: .35; } }
+.wr-pop { position: absolute; top: calc(100% + 8px); right: -4px; z-index: 60; width: 400px; max-width: calc(100vw - 32px); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 12px 32px rgba(0,0,0,.18); animation: wr-in .16s ease-out; }
+@keyframes wr-in { from { opacity: 0; transform: translateY(-4px); } }
+.wr-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.wr-head .muted { font-size: 11.5px; }
+.wr-rows { display: flex; flex-direction: column; gap: 4px; }
+.wr-row { display: grid; grid-template-columns: 112px 1fr 52px 74px; align-items: center; gap: 8px; padding: 3px 6px; border-radius: 6px; font-size: 12.5px; }
+.wr-row.link { cursor: pointer; }
+.wr-row.link:hover { background: var(--accent-soft); }
+.wr-row.cur { box-shadow: inset 2px 0 0 var(--accent); }
+.wr-row.sep { margin-top: 4px; border-top: 1px dashed var(--line); padding-top: 7px; border-radius: 0; color: var(--muted); }
+.wr-row.all { font-weight: 700; }
+.wr-lab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wr-track { height: 12px; border-radius: 3px; background: color-mix(in srgb, var(--line) 60%, transparent); overflow: hidden; display: flex; align-items: center; }
+.wr-track i { display: block; height: 100%; border-radius: 3px; background: color-mix(in srgb, var(--accent) 45%, transparent); transition: width .5s cubic-bezier(.2,.8,.2,1); }
+.wr-row.sep .wr-track i { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--muted) 55%, transparent) 0 4px, transparent 4px 7px); }
+.wr-row.all .wr-track i { background: var(--accent); }
+.wr-track em { font-style: normal; font-size: 10.5px; color: var(--muted); padding-left: 6px; }
+.wr-track em.busy { animation: wr-pulse 1.4s ease-in-out infinite; }
+.wr-val { text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.wr-sh { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.wr-warn { color: var(--bad); }
+.wr-verdict { font-size: 12.5px; padding: 8px 10px; border-radius: 6px; background: color-mix(in srgb, var(--line) 40%, transparent); }
+.wr-verdict.good { background: var(--accent-soft); }
+.wr-verdict.good b { color: var(--accent); }

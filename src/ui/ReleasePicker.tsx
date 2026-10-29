@@ -1,6 +1,7 @@
 import { T } from '../i18n';
 import React from 'react';
 import { useStore, releaseList, setRelView } from '../store';
+import { WasteReport } from './WasteReport';
 
 /**
  * Several releases loaded: pick which one's nesting is on screen (or all of them nested together),
@@ -29,6 +30,7 @@ export function ReleasePicker() {
         <b className={nesting ? 'busy' : ''}>{util != null && !(nesting && !layout) ? `${(util * 100).toFixed(1)}%` : '—'}</b>
         <span>{nesting ? T("calculando…") : relView === 'all' ? T("aprovechamiento · todos") : T`aprovechamiento · ${relView}`}</span>
       </div>
+      <WasteReport />
     </div>
   );
 }

@@ -43,6 +43,7 @@ export interface State {
   selMulti: string[];     // window / Ctrl selection (group) on the current sheet
   relView: string;        // release being viewed ('all' = every release nested together)
   relCache: Record<string, RelSnap>;   // the nesting of the other releases while one is viewed
+  reportRun: string | null;  // release the waste report is nesting in the background
   selRule: string | null;
   selPanel: string | null;
   toast: { msg: string; kind: 'ok' | 'warn' | 'err'; t: number } | null;
@@ -80,7 +81,7 @@ let state: State = {
   project, boms: [], steps: [], stepSources: [], sourceLabel: '', folder: storage.get<string | null>('ns.folder', null),
   loading: null, panels: [], flats: {}, buildWarnings: [], cons: new Map(), jobFilter: [],
   layout: null, violations: new Map(), layoutEdited: false, nesting: null, nestError: null,
-  autoNest: storage.get('ns.auto', true), view: 'sources', selSheet: 0, selIid: null, selMulti: [], relView: 'all', relCache: {}, selRule: project.rules[0]?.id ?? null, selPanel: null,
+  autoNest: storage.get('ns.auto', true), view: 'sources', selSheet: 0, selIid: null, selMulti: [], relView: 'all', relCache: {}, reportRun: null, selRule: project.rules[0]?.id ?? null, selPanel: null,
   toast: null, undo: [], redo: [], suggestions: null, suggesting: false, tune: null, sessionPath: null, dirty: false, pendingSetup: false,
 };
 
@@ -364,6 +365,7 @@ export async function loadSources(files: SourceFile[], label: string, folder: st
   }
   const codes = releaseCodes(boms, steps);
   const sourceLabel = codes.length > 1 ? `${(append ? state.sourceLabel.replace(/ \(.*\)$/, '') : label).split(/[\\/]/).filter(Boolean).pop()} (${codes.join(' + ')})` : (append ? state.sourceLabel : label);
+  stopReport();
   setState({ boms, steps, stepSources, sourceLabel, loading: null, layout: null, layoutEdited: false, undo: [], redo: [], jobFilter: [], relView: 'all', relCache: {}, sessionPath: null, dirty: true, pendingSetup: true });
   rebuildPanels();
   const np = state.panels.reduce((a, p) => a + p.qty, 0);
@@ -378,6 +380,7 @@ export function removeRelease(code: string) {
   const boms = state.boms.filter(b => b.rel !== code), steps = state.steps.filter(x => x.rel !== code), stepSources = state.stepSources.filter(f => f.rel !== code);
   const codes = releaseCodes(boms, steps);
   const base = state.sourceLabel.replace(/ \(.*\)$/, '');
+  stopReport();
   const relCache = { ...state.relCache }; delete relCache[code]; delete relCache.all;   // "all" changes without it
   setState({ boms, steps, stepSources, sourceLabel: codes.length > 1 ? `${base} (${codes.join(' + ')})` : base, relCache, dirty: true });
   if (state.relView === code || state.relView === 'all') setState({ relView: 'all', layout: null, undo: [], redo: [], layoutEdited: false });
@@ -424,6 +427,7 @@ export function releaseList(s: State = state) {
 export function setRelView(key: string) {
   if (key === state.relView) return;
   if (state.nesting) stopNest();
+  if (state.reportRun === key) stopReport();
   tuneWorker?.terminate(); tuneWorker = null;
   const cur: RelSnap = { layout: state.layout, undo: state.undo, redo: state.redo, layoutEdited: state.layoutEdited, selSheet: state.selSheet, sig: lastSig ?? nestSig() };
   const relCache = { ...state.relCache, [state.relView]: cur };
@@ -436,6 +440,50 @@ export function setRelView(key: string) {
   else if (nx && nx.sig !== nestSig() && state.autoNest) runNest({ keepLocked: true });
 }
 let lastSig: string | null = null;
+
+// ---------------- waste report (every release + all together) ----------------
+
+export interface RelStat { util: number; sheets: number; usedArea: number; sheetArea: number; unplaced: number; edited: boolean }
+const statOf = (l: Layout, edited: boolean): RelStat => ({ util: l.stats.utilization, sheets: l.sheets.length, usedArea: l.stats.usedArea, sheetArea: l.stats.sheetArea, unplaced: l.unplaced.length, edited });
+
+/** Up-to-date stats of each release's nesting and of 'all' (missing = not calculated yet / out of date). */
+export function relStats(s: State = state): Record<string, RelStat> {
+  const out: Record<string, RelStat> = {};
+  const sig = nestSig();
+  for (const [k, v] of Object.entries(s.relCache)) if (k !== s.relView && v.layout && (v.sig === sig || v.layoutEdited)) out[k] = statOf(v.layout, v.layoutEdited);
+  if (s.layout && !s.nesting) out[s.relView] = statOf(s.layout, s.layoutEdited);
+  return out;
+}
+
+let reportWorker: Worker | null = null;
+/** Nest, one at a time in the background, the releases the report doesn't have yet. Results go to relCache, so opening them later is instant. */
+export function fillReport() {
+  if (reportWorker || state.pendingSetup) return;
+  const rels = releaseList(); if (rels.length < 2) return;
+  const have = relStats();
+  const key = ['all', ...rels].find(k => !have[k] && !(k === state.relView && state.nesting) && activePanels({ ...state, relView: k }).length);
+  if (!key) { if (state.reportRun) setState({ reportRun: null }); return; }
+  const ps = activePanels({ ...state, relView: key });
+  const sig = nestSig(); const id = Math.random();
+  reportWorker = new EngineWorker();
+  setState({ reportRun: key });
+  const done = () => { reportWorker?.terminate(); reportWorker = null; };
+  reportWorker.onmessage = (ev: MessageEvent) => {
+    const m = ev.data; if (m.id !== id) return;
+    if (m.kind === 'nestDone') {
+      done();
+      if (sig === nestSig() && state.panels.length) {
+        if (key === state.relView) { if (!state.layout && !state.nesting) { lastSig = sig; setState({ layout: m.layout, dirty: true }); revalidate(); } }
+        else setState({ relCache: { ...state.relCache, [key]: { layout: m.layout, undo: [], redo: [], layoutEdited: false, selSheet: 0, sig } } });
+      }
+      setState({ reportRun: null });
+      fillReport();
+    } else if (m.kind === 'error') { done(); setState({ reportRun: null }); }
+  };
+  reportWorker.onerror = () => { done(); setState({ reportRun: null }); };
+  reportWorker.postMessage({ lang: getLang(), kind: 'nest', id, input: { panels: ps, rules: state.project.rules, sheets: state.project.sheets, settings: state.project.settings, seed: [], frozen: [] } });
+}
+export function stopReport() { reportWorker?.terminate(); reportWorker = null; if (state.reportRun) setState({ reportRun: null }); }
 
 
 export function rebuildPanels(noNest = false) {
