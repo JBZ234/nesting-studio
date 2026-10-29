@@ -4,7 +4,7 @@ import type { BomResult } from './bom';
 import { parseStepFileName } from './bom';
 import type { FlatPattern } from './unfold';
 
-export interface StepEntry { file: string; flat?: FlatPattern; error?: string }
+export interface StepEntry { file: string; flat?: FlatPattern; error?: string; rel?: string }
 
 export const sideKey = (depth: string, side: Side, code: string) => `${depth}|${side}|${code}`;
 
@@ -51,7 +51,29 @@ export function estimateBlank(p: Omit<Panel, 'blankW' | 'blankH' | 'blankSource'
   return { w: c.w + L.v + R.v, h: c.h + T.v + Bm.v, exact: L.known && R.known && T.known && Bm.known, returns: { L: Math.max(0, L.v), R: Math.max(0, R.v), T: Math.max(0, T.v), B: Math.max(0, Bm.v) } };
 }
 
+/** Release codes present (several releases loaded), in natural order. */
+export function releaseCodes(boms: { rel?: string }[], steps: { rel?: string }[] = []) {
+  const s = new Set<string>();
+  for (const x of [...boms, ...steps]) if (x.rel) s.add(x.rel);
+  return [...s].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+/**
+ * Panels of every release. With several releases each one is built on its own (its BOMs and its
+ * STEPs) and its pieces get the release code: uid `26100R8~26100|9066`, panel.rel = `26100R8`.
+ */
 export function buildPanels(boms: BomResult[], steps: StepEntry[], project: Project): { panels: Panel[]; flats: Record<string, FlatPattern>; warnings: string[] } {
+  const rels = releaseCodes(boms, steps);
+  if (!rels.length) return buildRelease(boms, steps, project);
+  const out = { panels: [] as Panel[], flats: {} as Record<string, FlatPattern>, warnings: [] as string[] };
+  for (const rel of rels) {
+    const r = buildRelease(boms.filter(b => b.rel === rel), steps.filter(s => s.rel === rel), project, rel);
+    out.panels.push(...r.panels); Object.assign(out.flats, r.flats); out.warnings.push(...r.warnings.map(w => `${rel}: ${w}`));
+  }
+  return out;
+}
+
+function buildRelease(boms: BomResult[], steps: StepEntry[], project: Project, rel?: string): { panels: Panel[]; flats: Record<string, FlatPattern>; warnings: string[] } {
   const warnings: string[] = [];
   const panels: Panel[] = [];
   const byMark = new Map<string, Panel[]>();
@@ -105,6 +127,12 @@ export function buildPanels(boms: BomResult[], steps: StepEntry[], project: Proj
     p.stepFile = s.file;
     if (s.flat) flats[p.uid] = s.flat;
     else if (s.error) warnings.push(T`STEP ${s.file}: ${s.error}`);
+  }
+  if (rel) {
+    // unique ids per release (the same mark can be in several releases of a job)
+    const old = { ...flats };
+    for (const k of Object.keys(flats)) delete flats[k];
+    for (const p of panels) { const u = `${rel}~${p.uid}`; if (old[p.uid]) flats[u] = old[p.uid]; p.uid = u; p.rel = rel; }
   }
   const learned = calibrateAllowances(panels, flats);
   const allow = { ...learned, ...project.edgeAllowances };

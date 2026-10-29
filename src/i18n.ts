@@ -966,7 +966,23 @@ const EN: Record<string, string> = {
  "Inglés": "English",
  "Español": "Spanish",
  "Idioma de la aplicación": "Application language",
- "la {}": "the {}"
+ "la {}": "the {}",
+ "Agregar release…": "Add release…",
+ "Suma otro release a lo que ya está abierto para verlo por separado o nestear todos juntos": "Adds another release to what's open, to view it on its own or nest them all together",
+ "una carpeta con varios releases los abre todos": "a folder with several releases opens them all",
+ "Releases": "Releases",
+ "Elige arriba, en la barra, qué release ver o todos juntos": "Pick at the top bar which release to view, or all of them together",
+ "Release": "Release",
+ "Quitar este release": "Remove this release",
+ "Release que se ve": "Release on screen",
+ "Todos los releases ({})": "All releases ({})",
+ "{} piezas": "{} pieces",
+ "Aprovechamiento del nesting que estás viendo: área de las piezas sobre el área de las láminas usadas": "Utilization of the nesting on screen: parts area over the area of the sheets used",
+ "calculando…": "calculating…",
+ "aprovechamiento · todos": "utilization · all",
+ "aprovechamiento · {}": "utilization · {}",
+ "{} releases cargados: {} paneles. Elige arriba qué release ver o todos juntos.": "{} releases loaded: {} panels. Pick at the top which release to view, or all of them together.",
+ "Release {} quitado": "Release {} removed"
 };
 const NAMES: Record<string, string> = {
  "Los lados 02 no van en los bordes de la lámina": "Sides 02 don't go on the sheet edges",

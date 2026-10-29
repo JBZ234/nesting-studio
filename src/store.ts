@@ -4,7 +4,7 @@ import type { Project, Panel, Layout, SheetLayout, Placement, Rule, SheetDef, Ne
 import type { BomResult } from './core/bom';
 import { parseBomWorkbook } from './core/bom';
 import type { FlatPattern } from './core/unfold';
-import { buildPanels, StepEntry } from './core/panels';
+import { buildPanels, StepEntry, releaseCodes } from './core/panels';
 import { buildItems, tryPlace, NestProgress, SheetSuggestion, reorganizeSheet, alignInternalCuts, sinkConstrained, cutScore } from './core/nest';
 import { makeSheet } from './core/defaults';
 import type { Rot, SheetSize } from './core/types';
@@ -41,6 +41,8 @@ export interface State {
   selSheet: number;
   selIid: string | null;
   selMulti: string[];     // window / Ctrl selection (group) on the current sheet
+  relView: string;        // release being viewed ('all' = every release nested together)
+  relCache: Record<string, RelSnap>;   // the nesting of the other releases while one is viewed
   selRule: string | null;
   selPanel: string | null;
   toast: { msg: string; kind: 'ok' | 'warn' | 'err'; t: number } | null;
@@ -78,7 +80,7 @@ let state: State = {
   project, boms: [], steps: [], stepSources: [], sourceLabel: '', folder: storage.get<string | null>('ns.folder', null),
   loading: null, panels: [], flats: {}, buildWarnings: [], cons: new Map(), jobFilter: [],
   layout: null, violations: new Map(), layoutEdited: false, nesting: null, nestError: null,
-  autoNest: storage.get('ns.auto', true), view: 'sources', selSheet: 0, selIid: null, selMulti: [], selRule: project.rules[0]?.id ?? null, selPanel: null,
+  autoNest: storage.get('ns.auto', true), view: 'sources', selSheet: 0, selIid: null, selMulti: [], relView: 'all', relCache: {}, selRule: project.rules[0]?.id ?? null, selPanel: null,
   toast: null, undo: [], redo: [], suggestions: null, suggesting: false, tune: null, sessionPath: null, dirty: false, pendingSetup: false,
 };
 
@@ -180,12 +182,12 @@ async function unfoldAll(files: SourceFile[], kFactor: number, onDone: (n: numbe
       if (next >= files.length) { resolve(); return; }
       const f = files[next++];
       let text: string;
-      try { text = await f.readText(); } catch (e: any) { out.push({ file: f.name, error: String(e?.message || e) }); onDone(++done); run(); return; }
+      try { text = await f.readText(); } catch (e: any) { out.push({ file: f.name, error: String(e?.message || e), ...(f.rel ? { rel: f.rel } : {}) }); onDone(++done); run(); return; }
       const id = Math.random();
       const handler = (ev: MessageEvent) => {
         if (ev.data.kind !== 'unfoldDone' || ev.data.id !== id) return;
         w.removeEventListener('message', handler);
-        out.push({ file: f.name, flat: ev.data.flat, error: ev.data.error });
+        out.push({ file: f.name, flat: ev.data.flat, error: ev.data.error, ...(f.rel ? { rel: f.rel } : {}) });
         onDone(++done); run();
       };
       w.addEventListener('message', handler);
@@ -214,6 +216,9 @@ function sessionJson() {
     project: state.project, boms: state.boms, steps: state.steps,
     layout: state.layout, layoutEdited: state.layoutEdited, jobFilter: state.jobFilter,
     view: state.view, selSheet: state.selSheet, autoNest: state.autoNest,
+    // several releases: the one on screen and the nesting of the others (without undo history)
+    relView: state.relView,
+    relCache: Object.fromEntries(Object.entries(state.relCache).map(([k, v]) => [k, { layout: v.layout, layoutEdited: v.layoutEdited, selSheet: v.selSheet, sig: v.sig }])),
   }, round);
 }
 
@@ -245,7 +250,10 @@ export function openSessionText(text: string, path: string) {
     project, boms: d.boms ?? [], steps: d.steps ?? [], stepSources: [], sourceLabel: d.sourceLabel ?? '', folder: d.folder ?? null,
     jobFilter: d.jobFilter ?? [], layout: null, layoutEdited: !!d.layoutEdited, undo: [], redo: [], nesting: null, nestError: null,
     suggestions: null, suggesting: false, tune: null, selIid: null, selMulti: [], selRule: project.rules[0]?.id ?? null,
+    relView: d.relView ?? 'all',
+    relCache: Object.fromEntries(Object.entries(d.relCache ?? {}).map(([k, v]: [string, any]) => [k, { layout: v.layout ?? null, undo: [], redo: [], layoutEdited: !!v.layoutEdited, selSheet: v.selSheet ?? 0, sig: v.sig ?? '' }])),
   });
+  lastSig = null;
   storage.set('ns.project', project);
   // rebuild panels and constraints without re-optimizing: the saved layout is shown as it was
   const { panels, flats, warnings } = buildPanels(state.boms, state.steps, state.project);
@@ -270,27 +278,111 @@ export async function openSession() {
 export function confirmSetup() { setState({ pendingSetup: false }); runNest({ keepLocked: false }); }
 export function skipSetup() { setState({ pendingSetup: false }); }
 
-export async function loadSources(files: SourceFile[], label: string, folder: string | null = null) {
+/**
+ * Several releases in one folder: when two or more subfolders each have their own BOM and STEP
+ * files (e.g. Releases/RLS#8, Releases/RLS#9…), returns them as groups. A single release folder
+ * (with "1 - BOM" and "2 - PPP" inside) is not split.
+ */
+function splitReleases(files: SourceFile[], folder: string | null) {
+  const root = folder ? folder.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase() : null;
+  const rel = (f: SourceFile) => {
+    const pth = f.path.replace(/\\/g, '/');
+    if (root && pth.toLowerCase().startsWith(root + '/')) return pth.slice(root.length + 1);
+    return root ? pth : pth.split('/').slice(1).join('/'); // browser: path starts with the picked folder's name
+  };
+  const groups = new Map<string, SourceFile[]>();
+  for (const f of files) {
+    const parts = rel(f).split('/');
+    if (parts.length < 2) continue;
+    const g = groups.get(parts[0]) ?? []; g.push(f); groups.set(parts[0], g);
+  }
+  const full = [...groups].filter(([, g]) => g.some(f => f.kind === 'bom') && g.some(f => f.kind === 'step'));
+  return full.length >= 2 ? full.sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true })) : null;
+}
+
+/** Code of a release from its BOMs: job + release number (26100R8), or the folder name. */
+function releaseCode(boms: BomResult[], fallback: string) {
+  const cnt = new Map<string, number>();
+  for (const b of boms) if (b.header.job && b.header.release) { const k = `${b.header.job}R${String(b.header.release).replace(/^0+(?=\d)/, '')}`; cnt.set(k, (cnt.get(k) ?? 0) + b.panels.length + 1); }
+  const best = [...cnt].sort((a, b) => b[1] - a[1])[0]?.[0];
+  return (best ?? fallback).replace(/[#~|\s]+/g, '');
+}
+
+async function readBoms(bomFiles: SourceFile[], onDone: () => void) {
+  const boms: BomResult[] = [];
+  for (const f of bomFiles) {
+    try { boms.push(parseBomWorkbook(await f.readBytes(), f.name)); }
+    catch (e: any) { boms.push({ file: f.name, header: { job: '', jobName: '', release: '', material: '', alloy: '', thickness: '', finish: '', finishCode: '', panelCount: 0, date: '' }, panels: [], warnings: [T`No se pudo leer: ${e?.message || e}`] }); }
+    onDone();
+  }
+  return boms;
+}
+
+/**
+ * Open a folder. `append` adds it as one more release to what's loaded (several releases).
+ * A folder holding several releases loads each one as its own release.
+ */
+export async function loadSources(files: SourceFile[], label: string, folder: string | null = null, opts: { append?: boolean } = {}) {
   const bomFiles = files.filter(f => f.kind === 'bom');
   const stepFiles = files.filter(f => f.kind === 'step');
   const total = bomFiles.length + stepFiles.length;
   if (!total) { toast(T('No se encontraron archivos .step/.stp ni BOM .xls/.xlsx en esa carpeta'), 'warn'); return; }
-  setState({ loading: { done: 0, total, msg: T('Leyendo BOM…') }, sourceLabel: label, folder });
-  if (folder) storage.set('ns.folder', folder);
-  const boms: BomResult[] = [];
+  const groups = splitReleases(files, folder);
+  const append = !!opts.append && state.boms.length > 0;
+  const multi = !!groups || append;
+  setState({ loading: { done: 0, total, msg: T('Leyendo BOM…') }, ...(append ? {} : { sourceLabel: label, folder }) });
+  if (folder && !append) storage.set('ns.folder', folder);
   let done = 0;
-  for (const f of bomFiles) {
-    try { boms.push(parseBomWorkbook(await f.readBytes(), f.name)); }
-    catch (e: any) { boms.push({ file: f.name, header: { job: '', jobName: '', release: '', material: '', alloy: '', thickness: '', finish: '', finishCode: '', panelCount: 0, date: '' }, panels: [], warnings: [T`No se pudo leer: ${e?.message || e}`] }); }
-    setState({ loading: { done: ++done, total, msg: `BOM ${f.name}` } });
+  const tick = () => setState({ loading: { done: ++done, total, msg: T('Leyendo BOM…') } });
+  // release code of every file
+  const parts: { name: string; files: SourceFile[] }[] = groups ? groups.map(([name, g]) => ({ name, files: g })) : [{ name: label.split(/[\\/]/).filter(Boolean).pop() || label, files }];
+  let boms: BomResult[] = [];
+  const taken = new Set(append ? releaseCodes(state.boms, state.steps) : []);
+  const newSteps: SourceFile[] = [];
+  for (const part of parts) {
+    const pb = await readBoms(part.files.filter(f => f.kind === 'bom'), tick);
+    if (multi) {
+      let code = releaseCode(pb, part.name);
+      if (taken.has(code)) { let k = 2; while (taken.has(`${code}-${k}`)) k++; code = `${code}-${k}`; }
+      taken.add(code);
+      for (const b of pb) b.rel = code;
+      for (const f of part.files) if (f.kind === 'step') newSteps.push({ ...f, rel: code });
+    } else newSteps.push(...part.files.filter(f => f.kind === 'step'));
+    boms.push(...pb);
   }
   setState({ loading: { done, total, msg: T`Desdoblando ${stepFiles.length} STEP…` } });
-  const steps = await unfoldAll(stepFiles, state.project.settings.kFactor, n => setState({ loading: { done: done + n, total, msg: T`Desdoblando STEP ${n}/${stepFiles.length}` } }));
-  setState({ boms, steps, stepSources: stepFiles, loading: null, layout: null, layoutEdited: false, undo: [], redo: [], jobFilter: [], sessionPath: null, dirty: true, pendingSetup: true });
+  let steps = await unfoldAll(newSteps, state.project.settings.kFactor, n => setState({ loading: { done: done + n, total, msg: T`Desdoblando STEP ${n}/${stepFiles.length}` } }));
+  let stepSources = newSteps;
+  if (append) {
+    // what was loaded before becomes a release too
+    let oldB = state.boms, oldS = state.steps, oldSrc = state.stepSources;
+    if (!releaseCodes(oldB, oldS).length) {
+      const code = releaseCode(oldB, (state.sourceLabel || 'R1').split(/[\\/]/).filter(Boolean).pop() || 'R1');
+      oldB = oldB.map(b => ({ ...b, rel: code })); oldS = oldS.map(x => ({ ...x, rel: code })); oldSrc = oldSrc.map(f => ({ ...f, rel: code }));
+    }
+    boms = [...oldB, ...boms]; steps = [...oldS, ...steps]; stepSources = [...oldSrc, ...stepSources];
+  }
+  const codes = releaseCodes(boms, steps);
+  const sourceLabel = codes.length > 1 ? `${(append ? state.sourceLabel.replace(/ \(.*\)$/, '') : label).split(/[\\/]/).filter(Boolean).pop()} (${codes.join(' + ')})` : (append ? state.sourceLabel : label);
+  setState({ boms, steps, stepSources, sourceLabel, loading: null, layout: null, layoutEdited: false, undo: [], redo: [], jobFilter: [], relView: 'all', relCache: {}, sessionPath: null, dirty: true, pendingSetup: true });
   rebuildPanels();
   const np = state.panels.reduce((a, p) => a + p.qty, 0);
-  toast(T`${boms.length} BOM, ${steps.filter(s => s.flat).length}/${steps.length} STEP desdoblados, ${np} paneles`);
+  toast(codes.length > 1
+    ? T`${codes.length} releases cargados: ${np} paneles. Elige arriba qué release ver o todos juntos.`
+    : T`${boms.length} BOM, ${steps.filter(s => s.flat).length}/${steps.length} STEP desdoblados, ${np} paneles`);
   setState({ view: 'sheets' });
+}
+
+/** Take a release out of the work. */
+export function removeRelease(code: string) {
+  const boms = state.boms.filter(b => b.rel !== code), steps = state.steps.filter(x => x.rel !== code), stepSources = state.stepSources.filter(f => f.rel !== code);
+  const codes = releaseCodes(boms, steps);
+  const base = state.sourceLabel.replace(/ \(.*\)$/, '');
+  const relCache = { ...state.relCache }; delete relCache[code]; delete relCache.all;   // "all" changes without it
+  setState({ boms, steps, stepSources, sourceLabel: codes.length > 1 ? `${base} (${codes.join(' + ')})` : base, relCache, dirty: true });
+  if (state.relView === code || state.relView === 'all') setState({ relView: 'all', layout: null, undo: [], redo: [], layoutEdited: false });
+  rebuildPanels();
+  toast(T`Release ${code} quitado`);
 }
 
 export function loadPrepared(boms: BomResult[], steps: StepEntry[], label: string) {
@@ -311,8 +403,40 @@ export async function reUnfold() {
 // ---------------- derived ----------------
 
 export function activePanels(s: State = state) {
-  return s.jobFilter.length ? s.panels.filter(p => s.jobFilter.includes(p.job)) : s.panels;
+  let ps = s.jobFilter.length ? s.panels.filter(p => s.jobFilter.includes(p.job)) : s.panels;
+  if (s.relView !== 'all') ps = ps.filter(p => p.rel === s.relView);
+  return ps;
 }
+
+// ---------------- several releases ----------------
+
+/** One release's nesting, kept while another release is on screen. */
+export interface RelSnap { layout: Layout | null; undo: Layout[]; redo: Layout[]; layoutEdited: boolean; selSheet: number; sig: string }
+/** what the nesting depends on: if it changed while the release was hidden, it's recalculated */
+const nestSig = () => JSON.stringify([state.project.rules, state.project.sheets, state.project.settings, state.project.overrides, state.jobFilter]);
+
+/** Release codes loaded (empty when there's only one release). */
+export function releaseList(s: State = state) {
+  return releaseCodes(s.boms, s.steps);
+}
+
+/** Show the nesting of one release, or of all of them together ('all'). */
+export function setRelView(key: string) {
+  if (key === state.relView) return;
+  if (state.nesting) stopNest();
+  tuneWorker?.terminate(); tuneWorker = null;
+  const cur: RelSnap = { layout: state.layout, undo: state.undo, redo: state.redo, layoutEdited: state.layoutEdited, selSheet: state.selSheet, sig: lastSig ?? nestSig() };
+  const relCache = { ...state.relCache, [state.relView]: cur };
+  const nx = relCache[key];
+  setState({ relView: key, relCache, layout: nx?.layout ?? null, undo: nx?.undo ?? [], redo: nx?.redo ?? [], layoutEdited: nx?.layoutEdited ?? false, selSheet: nx?.selSheet ?? 0, selIid: null, selMulti: [], tune: null, suggestions: null, nestError: null });
+  lastSig = nx?.sig ?? null;
+  recomputeConstraints(true);
+  // first time on this release, or rules / sheets changed meanwhile: calculate it
+  if (!state.layout) runNest();
+  else if (nx && nx.sig !== nestSig() && state.autoNest) runNest({ keepLocked: true });
+}
+let lastSig: string | null = null;
+
 
 export function rebuildPanels(noNest = false) {
   const { panels, flats, warnings } = buildPanels(state.boms, state.steps, state.project);
@@ -395,6 +519,7 @@ export function runNest(opts: { keepLocked?: boolean } = { keepLocked: true }) {
     if (m.kind === 'progress') setState({ nesting: m.progress });
     else if (m.kind === 'nestDone') {
       const prev = state.layout;
+      lastSig = nestSig();
       setState({ dirty: true, layout: m.layout, nesting: null, layoutEdited: false, undo: prev ? [...state.undo.slice(-40), prev] : state.undo, redo: [], selSheet: Math.min(state.selSheet, Math.max(0, m.layout.sheets.length - 1)) });
       revalidate();
       nestWorker?.terminate(); nestWorker = null;

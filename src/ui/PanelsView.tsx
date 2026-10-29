@@ -55,7 +55,7 @@ export function PanelsView() {
                 return (
                   <tr key={p.uid} aria-selected={p.uid === selPanel} className={p.include ? '' : 'off'} onClick={() => setState({ selPanel: p.uid })} style={{ cursor: 'pointer' }}>
                     <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={p.include} onChange={e => setOverride(p.uid, { include: e.target.checked })} aria-label={T`Incluir ${p.mark}`} /></td>
-                    <td><b>{p.mark}</b>{overrides[p.uid] && <span className="pill acc" style={{ marginLeft: 6 }}>{T("editado")}</span>}</td>
+                    <td>{p.rel && <span className="rel-tag" style={{ marginRight: 6 }}>{p.rel}</span>}<b>{p.mark}</b>{overrides[p.uid] && <span className="pill acc" style={{ marginLeft: 6 }}>{T("editado")}</span>}</td>
                     <td className="muted">{p.job}</td>
                     <td>{p.type}</td>
                     <td><EdgeCodes p={p} /></td>
@@ -96,7 +96,7 @@ function PanelDetail({ p }: { p: Panel }) {
   return (
     <>
       <div className="insp-sec">
-        <div className="row"><h3 style={{ fontSize: 22 }}>{p.mark}</h3><span className="pill">{p.type}</span><span className="grow" />{ov && <button className="btn sm" onClick={() => setOverride(p.uid, null)}>{T("Deshacer ediciones")}</button>}</div>
+        <div className="row">{p.rel && <span className="rel-tag" style={{ fontSize: 13 }}>{p.rel}</span>}<h3 style={{ fontSize: 22 }}>{p.mark}</h3><span className="pill">{p.type}</span><span className="grow" />{ov && <button className="btn sm" onClick={() => setOverride(p.uid, null)}>{T("Deshacer ediciones")}</button>}</div>
         <div className="muted" style={{ fontSize: 13 }}>{p.bomFile || T('sin BOM')} · {p.bomSheet}{p.stepFile ? ` · ${p.stepFile}` : ''}</div>
         <FlatPreview p={p} flat={flat} />
         {flat && <dl className="kv">

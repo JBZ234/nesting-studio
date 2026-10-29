@@ -14,14 +14,14 @@ export function layoutCsv(layout: Layout, panels: Panel[], s: NestSettings): str
   const groups = groupIdentical(layout);
   const layoutNo = new Map<string, number>();
   groups.forEach((g, i) => g.ids.forEach(id => layoutNo.set(id, i + 1)));
-  const head = ['Lamina', 'Layout', 'Repeticiones', 'Lamina_W', 'Lamina_H', T('Marca'), 'Job', T('Tipo'), 'T', 'B', 'L', 'R', 'A', 'B_dim', 'X', 'Y', T('Ancho'), T('Alto'), 'Rotacion', T('Espejo'), 'Lado_arriba', 'Lado_abajo', T('Desarrollo'), 'Bloqueado'];
+  const head = ['Lamina', 'Layout', 'Repeticiones', 'Lamina_W', 'Lamina_H', 'Release', T('Marca'), 'Job', T('Tipo'), 'T', 'B', 'L', 'R', 'A', 'B_dim', 'X', 'Y', T('Ancho'), T('Alto'), 'Rotacion', T('Espejo'), 'Lado_arriba', 'Lado_abajo', T('Desarrollo'), 'Bloqueado'];
   const rows = [head.join(',')];
   layout.sheets.forEach((sh, i) => {
     const g = groups.find(x => x.ids.includes(sh.id));
     for (const pl of [...sh.placements].sort((a, b) => a.y - b.y || a.x - b.x)) {
       const p = pm.get(pl.uid);
       const y = s.originForExport === 'BL' ? pl.y : sh.h - pl.y - pl.h;
-      rows.push([i + 1, layoutNo.get(sh.id) ?? '', g?.count ?? 1, sh.w, sh.h, p?.mark ?? pl.uid, p?.job ?? '', p?.type ?? '', p?.edgeT ?? '', p?.edgeB ?? '', p?.edgeL ?? '', p?.edgeR ?? '', p?.A ?? '', p?.B ?? '', f3(pl.x), f3(y), f3(pl.w), f3(pl.h), pl.rot, flipOf(p, s) ? 'si' : 'no', p ? p[`edge${sideAt('top', pl.rot, flipOf(p, s))}` as 'edgeT'] : '', p ? p[`edge${sideAt('bottom', pl.rot, flipOf(p, s))}` as 'edgeT'] : '', p?.blankSource ?? '', pl.locked ? 'si' : ''].map(csvq).join(','));
+      rows.push([i + 1, layoutNo.get(sh.id) ?? '', g?.count ?? 1, sh.w, sh.h, p?.rel ?? p?.release ?? '', p?.mark ?? pl.uid, p?.job ?? '', p?.type ?? '', p?.edgeT ?? '', p?.edgeB ?? '', p?.edgeL ?? '', p?.edgeR ?? '', p?.A ?? '', p?.B ?? '', f3(pl.x), f3(y), f3(pl.w), f3(pl.h), pl.rot, flipOf(p, s) ? 'si' : 'no', p ? p[`edge${sideAt('top', pl.rot, flipOf(p, s))}` as 'edgeT'] : '', p ? p[`edge${sideAt('bottom', pl.rot, flipOf(p, s))}` as 'edgeT'] : '', p?.blankSource ?? '', pl.locked ? 'si' : ''].map(csvq).join(','));
     }
   });
   rows.push('');
@@ -66,7 +66,7 @@ export function layoutDxf(layout: Layout, panels: Panel[], flats: Record<string,
           line(sg.kind === 'bend' ? 'DOBLEZ' : 'CORTE', a[0], a[1], b[0], b[1]);
         }
       }
-      text(pl.x + 0.5, oy + pl.y + pl.h / 2, Math.min(1.2, pl.h / 5), `${p?.mark ?? pl.uid}${pl.rot ? ` R${pl.rot}` : ''}${flipOf(p, s) ? ' E' : ''}`);
+      text(pl.x + 0.5, oy + pl.y + pl.h / 2, Math.min(1.2, pl.h / 5), `${p?.rel ? p.rel + ' ' : ''}${p?.mark ?? pl.uid}${pl.rot ? ` R${pl.rot}` : ''}${flipOf(p, s) ? ' E' : ''}`);
     }
     oy += sh.h + 12;
   });

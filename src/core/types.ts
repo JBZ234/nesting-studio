@@ -21,6 +21,7 @@ export interface Panel {
   grain: string; notes: string; options: string;
   material: string; alloy: string; thickness: string; finish: string; finishCode: string;
   bomFile: string; bomSheet: string;
+  rel?: string;             // project + release code (e.g. 26100R8) when several releases are loaded
   stepFile?: string;
   blankW: number;           // flat blank along A (sheet X at rot 0)
   blankH: number;

@@ -1,6 +1,6 @@
 import { T, Tn } from '../i18n';
 import React, { useEffect, useMemo, useState } from 'react';
-import { flipMark, releaseOrient, reorganizeCurrent, setRules, toast, freezeSheets, previewOnSheet, useStore, setState, getState, rotatePlacement, toggleLock, unplace, placeOnSheet, movePlacement, lockSheet, nudgeMany, lockMany, unplaceMany, addEmptySheet, deleteSheet, runNest, undo, redo } from '../store';
+import { releaseList, flipMark, releaseOrient, reorganizeCurrent, setRules, toast, freezeSheets, previewOnSheet, useStore, setState, getState, rotatePlacement, toggleLock, unplace, placeOnSheet, movePlacement, lockSheet, nudgeMany, lockMany, unplaceMany, addEmptySheet, deleteSheet, runNest, undo, redo } from '../store';
 import { SheetCanvas, ColorMode, partFill } from './SheetCanvas';
 import { groupIdentical } from '../core/nest';
 import { I } from './icons';
@@ -283,7 +283,7 @@ function Inspector() {
         {pl.trial && <div className="insp-sec"><div className="viol"><b>{T("Pieza de prueba")}</b><span>{T("La pusiste para ver cómo quedaría, sin respetar reglas. No sale en la exportación y vuelve a \"Sin ubicar\" al optimizar.")}</span><span className="muted">{T("Antes estaba sin ubicar porque:")} {pl.trial.reason}</span>
           <div className="row"><button className="btn sm danger" onClick={() => unplace(selSheet, pl.iid)}><I.trash /> {T("Quitar prueba")}</button></div></div></div>}
         <div className="insp-sec">
-          <div className="row"><h3 style={{ fontSize: 22 }}>{p?.mark}</h3><span className="pill">{p?.type}</span>{p && <span className={`otag otag-${orientationOf(p, settings)}`}>{orientationOf(p, settings) === 'H' ? 'Horizontal' : 'Vertical'}</span>}{pl.trial ? <span className="pill bad">{T("prueba")}</span> : pl.locked && <span className="pill acc">{T("fijado")}</span>}<span className="grow" /><button className="iconbtn" onClick={() => setState({ selIid: null })} title={T("Cerrar")}><I.x /></button></div>
+          <div className="row">{p?.rel && <span className="rel-tag" style={{ fontSize: 13 }}>{p.rel}</span>}<h3 style={{ fontSize: 22 }}>{p?.mark}</h3><span className="pill">{p?.type}</span>{p && <span className={`otag otag-${orientationOf(p, settings)}`}>{orientationOf(p, settings) === 'H' ? 'Horizontal' : 'Vertical'}</span>}{pl.trial ? <span className="pill bad">{T("prueba")}</span> : pl.locked && <span className="pill acc">{T("fijado")}</span>}<span className="grow" /><button className="iconbtn" onClick={() => setState({ selIid: null })} title={T("Cerrar")}><I.x /></button></div>
           <div className="muted" style={{ fontSize: 13 }}>Job {p?.job} · {p?.bomSheet}</div>
           <div className="row" style={{ gap: 6 }}>
             <button className="btn sm" title={T("Rotar 90° (R). Se mantiene al re-optimizar")} onClick={() => rotatePlacement(selSheet, pl.iid)}><I.rotate /> {T("Rotar")}</button>
@@ -373,7 +373,7 @@ function Inspector() {
       {sheet && <div className="insp-sec">
         <span className="label">{T("Contenido de la lámina")}</span>
         <table className="tbl"><thead><tr><th>{T("Marca")}</th><th>{T("Tipo")}</th><th className="r">{T("Cant.")}</th><th className="r">{T("Rot.")}</th></tr></thead>
-          <tbody>{[...counts].map(([uid, n]) => { const p = pm.get(uid); const rots = [...new Set(sheet.placements.filter(x => x.uid === uid).map(x => x.rot))].join('/'); return <tr key={uid} onClick={() => setState({ selIid: sheet.placements.find(x => x.uid === uid)!.iid })} style={{ cursor: 'pointer' }}><td><b>{p?.mark}</b></td><td>{p?.type}</td><td className="r num">{n}</td><td className="r num">{rots}°</td></tr>; })}</tbody></table>
+          <tbody>{[...counts].map(([uid, n]) => { const p = pm.get(uid); const rots = [...new Set(sheet.placements.filter(x => x.uid === uid).map(x => x.rot))].join('/'); return <tr key={uid} onClick={() => setState({ selIid: sheet.placements.find(x => x.uid === uid)!.iid })} style={{ cursor: 'pointer' }}><td>{p?.rel && releaseList().length > 1 && <span className="rel-tag" style={{ marginRight: 5 }}>{p.rel}</span>}<b>{p?.mark}</b></td><td>{p?.type}</td><td className="r num">{n}</td><td className="r num">{rots}°</td></tr>; })}</tbody></table>
       </div>}
       <div className="insp-sec">
         <span className="label">{T("Sin ubicar (")}{layout.unplaced.length})</span>

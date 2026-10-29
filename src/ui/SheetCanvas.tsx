@@ -5,7 +5,7 @@ import type { FlatPattern } from '../core/unfold';
 import type { PanelConstraints } from '../core/rules';
 import { zoneRect, facing } from '../core/rules';
 import { orientationOf } from '../core/panels';
-import { getState, setPositions, commitDrag, useStore } from '../store';
+import { getState, setPositions, commitDrag, useStore, releaseList } from '../store';
 
 const HUES = [208, 28, 152, 280, 350, 95, 190, 48, 320, 120, 240, 5];
 export function hashHue(s: string) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return HUES[h % HUES.length]; }
@@ -60,6 +60,8 @@ export function SheetCanvas(p: Props) {
   const rules = useStore(s => s.project.rules);
   const settings = useStore(s => s.project.settings);
   const violations = useStore(s => s.violations);
+  useStore(s => s.boms);
+  const multiRel = releaseList().length > 1;   // several releases loaded: every piece shows its project + release code
   const pm = useMemo(() => new Map(panels.map(x => [x.uid, x])), [panels]);
   const W = sheet.w, H = sheet.h;
   const pad = p.thumb ? 1 : Math.max(W, H) * 0.05;
@@ -270,6 +272,7 @@ export function SheetCanvas(p: Props) {
             {p.highlight?.has(pl.uid) && <rect x={pl.x - sw * 2} y={y - sw * 2} width={pl.w + sw * 4} height={pl.h + sw * 4} fill="color-mix(in srgb, var(--sel) 22%, transparent)" stroke="var(--sel)" strokeWidth={p.thumb ? 2 : sw * 5} pointerEvents="none" className="hit-glow" />}
             {p.showLabels !== false && !p.thumb && lfs > 0.5 && (
               <g pointerEvents="none" fontFamily="var(--f-display)" textAnchor="middle">
+                {multiRel && pan?.rel && <text x={pl.x + pl.w / 2} y={y + pl.h / 2 - lfs * 1.05} fontSize={lfs * 0.5} fontWeight={800} letterSpacing={lfs * 0.04} fill="var(--accent)" dominantBaseline="middle" fontFamily="var(--f-mono)">{pan.rel}</text>}
                 <text x={pl.x + pl.w / 2} y={y + pl.h / 2 - lfs * 0.25} fontSize={lfs} fontWeight={700} fill="var(--part-ink)" dominantBaseline="middle">{label}</text>
                 {pan && <text x={pl.x + pl.w / 2} y={y + pl.h / 2 + lfs * 0.62} fontSize={lfs * 0.5} fontWeight={700} letterSpacing={lfs * 0.06} fill={orientationOf(pan, settings) === 'H' ? 'var(--sel)' : 'var(--accent)'} dominantBaseline="middle">{orientationOf(pan, settings) === 'H' ? 'HORIZONTAL' : 'VERTICAL'}</text>}
                 {lfs > 0.9 && <text x={pl.x + pl.w / 2} y={y + pl.h / 2 + lfs * 1.3} fontSize={lfs * 0.62} fill="var(--part-ink-2)" fontFamily="var(--f-mono)" dominantBaseline="middle">{pl.w.toFixed(2)}×{pl.h.toFixed(2)}{pl.rot ? ` · ${pl.rot}°` : ''}{cons.get(pl.uid)?.flip ? T(' · espejo') : ''}{cons.get(pl.uid)?.fixedRot != null ? T(' · giro fijo') : ''}</text>}
@@ -285,7 +288,7 @@ export function SheetCanvas(p: Props) {
                     return <text key={sd} x={tx} y={ty} fontSize={efs} textAnchor={an} fontFamily="var(--f-mono)" fontWeight={700} fill="var(--accent)">{pan[`edge${sd}` as 'edgeT']}</text>;
                   });
                 })()}
-                {pl.trial && <text x={pl.x + pl.w / 2} y={y + pl.h / 2 - lfs * 1.25} fontSize={lfs * 0.55} fontWeight={800} letterSpacing={lfs * 0.08} fill="var(--bad)" dominantBaseline="middle">{T("PRUEBA · BORRAR")}</text>}
+                {pl.trial && <text x={pl.x + pl.w / 2} y={y + pl.h / 2 - lfs * (multiRel ? 1.7 : 1.25)} fontSize={lfs * 0.55} fontWeight={800} letterSpacing={lfs * 0.08} fill="var(--bad)" dominantBaseline="middle">{T("PRUEBA · BORRAR")}</text>}
                 {pl.locked && !pl.trial && <text x={pl.x + lfs * 0.5} y={y + lfs * 0.9} fontSize={lfs * 0.8} textAnchor="start" fill="var(--part-ink-2)">🔒</text>}
               </g>
             )}

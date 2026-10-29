@@ -5,6 +5,7 @@ export const isTauri = typeof window !== 'undefined' && !!(window as any).__TAUR
 export interface SourceFile {
   name: string;      // file name only
   path: string;      // full path (tauri) or relative path (web)
+  rel?: string;      // release it belongs to, when several releases are loaded
   size: number;
   kind: 'step' | 'bom' | 'other';
   readText: () => Promise<string>;

@@ -15,6 +15,7 @@ import { saveTextFile, isTauri, storage } from '../platform';
 import { layoutPdf } from './pdf';
 import { applyAppearance, useTheme } from './appearance';
 import { AppearancePicker } from './AppearancePicker';
+import { ReleasePicker } from './ReleasePicker';
 
 const NAV: { v: View; label: string; icon: () => JSX.Element }[] = [
   { v: 'sources', label: T('Archivos'), icon: I.folder },
@@ -126,6 +127,7 @@ export function App() {
           <button className={`btn sm ${dirty && panels.length ? 'primary-soft' : ''}`} title={sessionPath ? T`Guardar en ${sessionPath} (Ctrl+S). Mayús+Ctrl+S: guardar como…` : T('Guardar este trabajo en un archivo .nesting (Ctrl+S)')} disabled={!panels.length} onClick={() => saveSession(false)}><I.download /> {T("Guardar")}</button>
           {sessionPath && <button className="btn sm ghost" title={T("Guardar como otro archivo (Mayús+Ctrl+S)")} disabled={!panels.length} onClick={() => saveSession(true)}>{T("Guardar como…")}</button>}
         </div>
+        <ReleasePicker />
         {jobs.length > 1 && <div className="row" style={{ gap: 4 }} role="group" aria-label={T("Jobs incluidos")}>
           <span className="label">Jobs</span>
           {jobs.map(j => { const on = !jobFilter.length || jobFilter.includes(j); return <button key={j} className="chip" aria-pressed={on} title={jobFilter.length ? T('Clic para incluir o quitar este job') : T('Clic para trabajar sólo con este job')} style={on ? { background: 'var(--accent-soft)', fontWeight: 700 } : { opacity: .55 }} onClick={() => toggleJob(j)}>{j}</button>; })}

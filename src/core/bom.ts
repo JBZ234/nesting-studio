@@ -9,7 +9,7 @@ export interface BomHeader {
 
 export type BomPanel = Omit<Panel, 'blankW' | 'blankH' | 'blankSource' | 'include'>;
 
-export interface BomResult { file: string; header: BomHeader; panels: BomPanel[]; warnings: string[] }
+export interface BomResult { file: string; header: BomHeader; panels: BomPanel[]; warnings: string[]; rel?: string /* release code (several releases loaded) */ }
 
 const str = (v: unknown): string => {
   if (v === null || v === undefined) return '';

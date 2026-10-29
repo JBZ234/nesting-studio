@@ -130,7 +130,7 @@ export function layoutPdf(layout: Layout, panels: Panel[], flats: Record<string,
     let cur = pg;
     layout.sheets.forEach((sh, i) => {
       if (y < 40) { cur = new Page(); pages.push(cur); y = PH - 50; head.forEach((h, k) => cur.text(cols[k], y, 8.5, h, { bold: true })); cur.lw(0.5).rgbS([0.6, 0.6, 0.6]).line(40, y - 4, PW - 40, y - 4); y -= rowH + 2; }
-      const cnt = new Map<string, number>(); for (const pl of realPls(i)) { const m = pm.get(pl.uid)?.mark ?? pl.uid; cnt.set(m, (cnt.get(m) || 0) + 1); }
+      const cnt = new Map<string, number>(); for (const pl of realPls(i)) { const pp = pm.get(pl.uid); const m = pp ? (pp.rel ? `${pp.rel} ${pp.mark}` : pp.mark) : pl.uid; cnt.set(m, (cnt.get(m) || 0) + 1); }
       let content = [...cnt].map(([m, c]) => c > 1 ? `${m} ×${c}` : m).join(', ');
       while (content.length > 4 && textW(content, 8) > PW - 40 - cols[5]) content = content.slice(0, -4) + '…';
       const same = (sameAs.get(sh.id) ?? []).length;
@@ -185,10 +185,12 @@ export function layoutPdf(layout: Layout, panels: Panel[], flats: Record<string,
       }
       // labels
       const label = p?.mark ?? pl.uid;
+      const relCode = p?.rel;
       const W = pl.w * k, H = pl.h * k;
       const fs = Math.max(4, Math.min(16, H / 3.2, W / Math.max(3, label.length * 0.7)));
       const cx = X(pl.x + pl.w / 2), cy = Y(pl.y + pl.h / 2);
       pg.text(cx, cy + fs * 0.1, fs, label, { bold: true, align: 'c', color: [0.1, 0.1, 0.15] });
+      if (relCode) { const rfs = Math.min(fs * 0.55, W / (relCode.length * 0.7)); if (rfs >= 3) pg.text(cx, cy + fs * 1.05, rfs, relCode, { bold: true, align: 'c', color: [0.25, 0.4, 0.65] }); }
       const sub = `${pl.w.toFixed(2)} × ${pl.h.toFixed(2)}${pl.rot ? ` · ${pl.rot}°` : ''}${fl ? T(' · espejo') : ''}`;
       const sfs = Math.min(fs * 0.55, W / (sub.length * 0.55));
       if (sfs >= 3.2) pg.text(cx, cy - fs * 0.75, sfs, sub, { align: 'c', color: [0.3, 0.3, 0.3] });
@@ -208,7 +210,7 @@ export function layoutPdf(layout: Layout, panels: Panel[], flats: Record<string,
     }
     // origin + contents
     pg.rgbF([0.75, 0.35, 0.05]).rect(X(0) - 2, (s.originForExport === 'BL' ? Y(0) : Y(sh.h)) - 2, 4, 4, 'f');
-    const cnt = new Map<string, number>(); for (const pl of realPls(i)) { const mk = pm.get(pl.uid)?.mark ?? pl.uid; cnt.set(mk, (cnt.get(mk) || 0) + 1); }
+    const cnt = new Map<string, number>(); for (const pl of realPls(i)) { const pp = pm.get(pl.uid); const mk = pp ? (pp.rel ? `${pp.rel} ${pp.mark}` : pp.mark) : pl.uid; cnt.set(mk, (cnt.get(mk) || 0) + 1); }
     let content = T('Contenido: ') + [...cnt].map(([mk, c]) => c > 1 ? `${mk} ×${c}` : mk).join(', ');
     while (content.length > 14 && textW(content, 9) > PW - 72) content = content.slice(0, -4) + '…';
     pg.text(36, 24, 9, content, { color: [0.3, 0.3, 0.3] });
